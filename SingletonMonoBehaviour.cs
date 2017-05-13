@@ -1,0 +1,34 @@
+﻿using UnityEngine;
+
+namespace J
+{
+	public abstract class SingletonMonoBehaviour<T> : MonoBehaviour where T : SingletonMonoBehaviour<T>
+	{
+		public static T Instance { get; private set; }
+
+		protected virtual void Awake()
+		{
+			if (Instance == null)
+			{
+				Instance = this as T;
+				SingletonAwake();
+			}
+			else if (Instance != this)
+			{
+				Debug.LogWarningFormat("Destroy {0} on {1} since there is one on {2}.", typeof(T).Name, name, Instance.name);
+				Destroy(this);
+			}
+		}
+
+		protected virtual void OnDestroy()
+		{
+			if (Instance && Instance == this)
+			{
+				SingletonOnDestroy();
+			}
+		}
+
+		protected virtual void SingletonAwake() { }
+		protected virtual void SingletonOnDestroy() { }
+	}
+}
