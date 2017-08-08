@@ -1,4 +1,5 @@
-﻿using System;
+﻿#if NET_4_6
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UniRx;
@@ -12,13 +13,21 @@ namespace J
 			Subject<T> subject = new Subject<T>();
 			Task.Run(async () =>
 			{
-				while (await @this.MoveNext())
+				try
 				{
-					subject.OnNext(@this.Current);
+					while (await @this.MoveNext())
+					{
+						subject.OnNext(@this.Current);
+					}
+					subject.OnCompleted();
 				}
-				subject.OnCompleted();
+				catch (Exception e)
+				{
+					subject.OnError(e);
+				}
 			});
 			return subject;
 		}
 	}
 }
+#endif
