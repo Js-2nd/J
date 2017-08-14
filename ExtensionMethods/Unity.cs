@@ -8,6 +8,18 @@ namespace J
 
 	public static partial class ExtensionMethods
 	{
+		public static T GetOrAddComponent<T>(this GameObject @this) where T : Component
+		{
+			T component = @this.GetComponent<T>();
+			if (component == null) component = @this.AddComponent<T>();
+			return component;
+		}
+
+		public static T GetOrAddComponent<T>(this Component @this) where T : Component
+		{
+			return @this.gameObject.GetOrAddComponent<T>();
+		}
+
 		public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest @this)
 		{
 			return Observable.Defer(() => @this.Send().AsObservable()
@@ -15,9 +27,7 @@ namespace J
 				{
 					try
 					{
-						AssetBundle assetBundle = DownloadHandlerAssetBundle.GetContent(@this);
-						if (assetBundle == null) throw new Exception();
-						return assetBundle;
+						return DownloadHandlerAssetBundle.GetContent(@this);
 					}
 					catch (Exception)
 					{
