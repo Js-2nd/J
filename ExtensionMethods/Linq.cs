@@ -6,6 +6,11 @@ namespace J
 {
 	public static partial class ExtensionMethods
 	{
+		public static IEnumerable<T> ToSingleEnumerable<T>(this T @this)
+		{
+			yield return @this;
+		}
+
 		public static T RandomValue<T>(this IEnumerable<T> @this)
 		{
 			return @this.ToArray().RandomValue();

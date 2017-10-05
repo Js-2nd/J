@@ -13,7 +13,7 @@ namespace J
 			return value;
 		}
 
-		public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TValue> factory)
+		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue
 		{
 			TValue value;
 			if (@this.TryGetValue(key, out value) == false)
@@ -29,7 +29,7 @@ namespace J
 			return value;
 		}
 
-		public static TValue GetOrAdd<TKey, TValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TValue> factory)
+		public static TValue GetOrAdd<TKey, TValue, TNewValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue
 		{
 			TValue value;
 			if (@this.TryGetValue(key, out value) == false)
