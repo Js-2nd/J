@@ -1,14 +1,17 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UniRx;
 
 namespace J
 {
-	public class LRU<T> : IDisposable
+	public class LRU<T> : ICollection<T>, IDisposable
 	{
 		public int Capacity { get; }
 		public int Count { get { return list.Count; } }
 		public IObservable<T> Expired { get { return expired; } }
+
+		bool ICollection<T>.IsReadOnly { get; }
 
 		LinkedList<T> list = new LinkedList<T>();
 		Dictionary<T, LinkedListNode<T>> dict = new Dictionary<T, LinkedListNode<T>>();
@@ -23,21 +26,39 @@ namespace J
 			Capacity = capacity;
 		}
 
+		void ICollection<T>.Add(T value) => Touch(value);
+
 		public void Clear()
 		{
 			list.Clear();
 			dict.Clear();
 		}
 
-		public bool Contains(T value)
-		{
-			return dict.ContainsKey(value);
-		}
+		public bool Contains(T value) => dict.ContainsKey(value);
 
-		void Renew(LinkedListNode<T> node)
+		public void CopyTo(T[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
+
+		public void Dispose() => expired.Dispose();
+
+		public LinkedList<T>.Enumerator GetEnumerator() => list.GetEnumerator();
+
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+
+		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+		public bool Remove(T item) => Remove(dict.GetOrDefault(item));
+
+		public void Touch(T value)
 		{
-			list.Remove(node);
-			list.AddLast(node);
+			LinkedListNode<T> node;
+			if (dict.TryGetValue(value, out node))
+			{
+				Renew(node);
+			}
+			else
+			{
+				Add(value);
+			}
 		}
 
 		void Add(T value)
@@ -54,19 +75,6 @@ namespace J
 			}
 		}
 
-		public void Touch(T value)
-		{
-			LinkedListNode<T> node;
-			if (dict.TryGetValue(value, out node))
-			{
-				Renew(node);
-			}
-			else
-			{
-				Add(value);
-			}
-		}
-
 		bool Remove(LinkedListNode<T> node)
 		{
 			if (node?.List != list)
@@ -77,14 +85,10 @@ namespace J
 			return true;
 		}
 
-		public bool Remove(T item)
+		void Renew(LinkedListNode<T> node)
 		{
-			return Remove(dict.GetOrDefault(item));
-		}
-
-		public void Dispose()
-		{
-			expired.Dispose();
+			list.Remove(node);
+			list.AddLast(node);
 		}
 	}
 }
