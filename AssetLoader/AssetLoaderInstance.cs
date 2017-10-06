@@ -7,7 +7,7 @@
 		public static readonly char[] Delimiters = { '/', '\\' };
 
 		public bool m_DontDestroyOnLoad = true;
-		public bool m_SimulationMode = false;
+		public bool m_SimulationMode = true;
 		public bool m_AutoLoadManifest = true;
 		public string m_ManifestUrl;
 
