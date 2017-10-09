@@ -8,10 +8,10 @@ namespace J
 	public class LRU<T> : ICollection<T>, IDisposable
 	{
 		public int Capacity { get; }
-		public int Count { get { return list.Count; } }
-		public IObservable<T> Expired { get { return expired; } }
+		public int Count => list.Count;
+		public IObservable<T> Expired => expired;
 
-		bool ICollection<T>.IsReadOnly { get; }
+		bool ICollection<T>.IsReadOnly => false;
 
 		LinkedList<T> list = new LinkedList<T>();
 		Dictionary<T, LinkedListNode<T>> dict = new Dictionary<T, LinkedListNode<T>>();
