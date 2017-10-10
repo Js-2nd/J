@@ -7,16 +7,6 @@ namespace J
 {
 	public class LRU<T> : ICollection<T>, IDisposable
 	{
-		public int Capacity { get; }
-		public int Count => list.Count;
-		public IObservable<T> Expired => expired;
-
-		bool ICollection<T>.IsReadOnly => false;
-
-		LinkedList<T> list = new LinkedList<T>();
-		Dictionary<T, LinkedListNode<T>> dict = new Dictionary<T, LinkedListNode<T>>();
-		Subject<T> expired = new Subject<T>();
-
 		public LRU(int capacity)
 		{
 			if (capacity < 0)
@@ -26,7 +16,18 @@ namespace J
 			Capacity = capacity;
 		}
 
-		void ICollection<T>.Add(T value) => Touch(value);
+		public int Capacity { get; }
+		public int Count => list.Count;
+		public IObservable<T> Expired => expired;
+
+		ICollection<T> iCollection => list;
+		bool ICollection<T>.IsReadOnly => iCollection.IsReadOnly;
+
+		LinkedList<T> list = new LinkedList<T>();
+		Dictionary<T, LinkedListNode<T>> dict = new Dictionary<T, LinkedListNode<T>>();
+		Subject<T> expired = new Subject<T>();
+
+		void ICollection<T>.Add(T item) => Touch(item);
 
 		public void Clear()
 		{
@@ -36,15 +37,15 @@ namespace J
 
 		public bool Contains(T value) => dict.ContainsKey(value);
 
-		public void CopyTo(T[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
+		void ICollection<T>.CopyTo(T[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
 
 		public void Dispose() => expired.Dispose();
 
 		public LinkedList<T>.Enumerator GetEnumerator() => list.GetEnumerator();
 
-		IEnumerator<T> IEnumerable<T>.GetEnumerator() => GetEnumerator();
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
 
-		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
 
 		public bool Remove(T item) => Remove(dict.GetOrDefault(item));
 
@@ -77,12 +78,12 @@ namespace J
 
 		bool Remove(LinkedListNode<T> node)
 		{
-			if (node?.List != list)
-				return false;
-
-			list.Remove(node);
-			dict.Remove(node.Value);
-			return true;
+			if (dict.Remove(node.Value))
+			{
+				list.Remove(node);
+				return true;
+			}
+			return false;
 		}
 
 		void Renew(LinkedListNode<T> node)
