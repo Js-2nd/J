@@ -10,15 +10,14 @@ namespace J
 		[NonSerialized]
 		public AssetBundleManifest m_Manifest;
 		[NonSerialized]
-		public string m_RootUrl;
+		public string m_RootUri;
 		ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
 
-		public void LoadManifest(string manifestUrl)
+		public void LoadManifest(string uri)
 		{
-			m_ManifestUrl = manifestUrl;
 			m_LoadManifestStatus.Value = LoadManifestStatus.Loading;
 			AssetBundleManifest newManifest = null;
-			UnityWebRequest.GetAssetBundle(manifestUrl).AsAssetBundleObservable()
+			UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
 				.ContinueWith(ab => ab.LoadAllAssetsAsync<AssetBundleManifest>().AsAsyncOperationObservable())
 				.Select(req => newManifest = req.allAssets[0] as AssetBundleManifest)
 				.Finally(() =>
@@ -32,7 +31,7 @@ namespace J
 					{
 						Debug.Log("AssetBundleManifest loaded");
 						m_Manifest = newManifest;
-						m_RootUrl = manifestUrl.Substring(0, manifestUrl.LastIndexOfAny(Delimiters) + 1);
+						m_RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
 						m_LoadManifestStatus.Value = LoadManifestStatus.Loaded;
 					}
 				})

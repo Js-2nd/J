@@ -1,4 +1,6 @@
-﻿namespace J
+﻿using UnityEngine;
+
+namespace J
 {
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
@@ -9,15 +11,29 @@
 		public bool m_DontDestroyOnLoad = true;
 		public bool m_SimulationMode = true;
 		public bool m_AutoLoadManifest = true;
-		public string m_ManifestUrl;
+
+		[SerializeField] string ANDROID_URI;
+		[SerializeField] string IOS_URI;
+		[SerializeField] string STANDALONE_URI;
+
+		public string ManifestUri =>
+#if UNITY_ANDROID
+			ANDROID_URI
+#elif UNITY_IOS
+			IOS_URI
+#else
+			STANDALONE_URI
+#endif
+			;
+
 
 		protected override void SingletonAwake()
 		{
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
 
-			if (m_AutoLoadManifest && !string.IsNullOrEmpty(m_ManifestUrl))
-				LoadManifest(m_ManifestUrl);
+			if (m_AutoLoadManifest && !string.IsNullOrEmpty(ManifestUri))
+				LoadManifest(ManifestUri);
 		}
 
 		protected override void SingletonOnDestroy()

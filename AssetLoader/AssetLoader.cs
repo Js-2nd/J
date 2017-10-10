@@ -13,9 +13,9 @@ namespace J
 			get { return AssetLoaderInstance.Instance.m_Manifest; }
 		}
 
-		public static void LoadManifest(string manifestUrl)
+		public static void LoadManifest(string uri)
 		{
-			AssetLoaderInstance.Instance.LoadManifest(manifestUrl);
+			AssetLoaderInstance.Instance.LoadManifest(uri);
 		}
 
 		public static IObservable<Unit> WaitForManifestLoaded()

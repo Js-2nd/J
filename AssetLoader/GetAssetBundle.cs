@@ -18,7 +18,7 @@ namespace J
 			CompositeDisposable pending = new CompositeDisposable();
 			m_BundlePending.Add(entry, pending);
 			WaitForManifestLoaded()
-				.ContinueWith(_ => UnityWebRequest.GetAssetBundle(m_RootUrl + entry.BundleName, m_Manifest.GetAssetBundleHash(entry.BundleName), 0).AsAssetBundleObservable())
+				.ContinueWith(_ => UnityWebRequest.GetAssetBundle(m_RootUri + entry.BundleName, m_Manifest.GetAssetBundleHash(entry.BundleName), 0).AsAssetBundleObservable())
 				.Finally(() => m_BundlePending.Remove(entry))
 				.Subscribe(cache)
 				.AddTo(pending);
