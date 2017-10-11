@@ -12,9 +12,12 @@ namespace J
 		ReplaySubject<Object> LoadFromGraphTool(AssetEntry entry)
 		{
 			var cache = new ReplaySubject<Object>();
-			AssetBundleBuildMap.GetBuildMap()
-				.GetAssetPathsFromAssetBundleAndAssetName(entry.BundleName, entry.AssetName)
-				.Take(1)
+			var paths = AssetBundleBuildMap.GetBuildMap().GetAssetPathsFromAssetBundleAndAssetName(entry.BundleName, entry.AssetName);
+			if (paths == null || paths.Length == 0)
+			{
+				throw new System.Exception(string.Format("Asset not found. {0}", entry));
+			}
+			paths.Take(1)
 				.SelectMany(path => AssetDatabase.LoadAllAssetsAtPath(path))
 				.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()))
 				.ToObservable()
