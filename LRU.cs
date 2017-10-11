@@ -5,7 +5,7 @@
 	using System.Collections.Generic;
 	using UniRx;
 
-	public class LRU<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection, IDisposable
+	public class LRU<T> : IReadOnlyCollection<T>, IDisposable
 	{
 		LinkedList<T> list;
 		Dictionary<T, LinkedListNode<T>> dict;
@@ -26,7 +26,9 @@
 		}
 
 		public int Capacity { get; }
+
 		public int Count => list.Count;
+
 		public IObservable<T> Expired => expired;
 
 		public void Clear()
@@ -40,6 +42,8 @@
 		public void Dispose() => expired.Dispose();
 
 		public LinkedList<T>.Enumerator GetEnumerator() => list.GetEnumerator();
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
+		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
 
 		public bool Remove(T item) => Remove(dict.GetOrDefault(item));
 
@@ -85,20 +89,5 @@
 			list.Remove(node);
 			list.AddLast(node);
 		}
-
-		#region Interface
-
-		bool ICollection<T>.IsReadOnly => ((ICollection<T>)list).IsReadOnly;
-		void ICollection<T>.Add(T item) => Touch(item);
-		void ICollection<T>.CopyTo(T[] array, int index) => list.CopyTo(array, index);
-
-		bool ICollection.IsSynchronized => ((ICollection)list).IsSynchronized;
-		object ICollection.SyncRoot => ((ICollection)list).SyncRoot;
-		void ICollection.CopyTo(Array array, int index) => ((ICollection)list).CopyTo(array, index);
-
-		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
-		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
-
-		#endregion
 	}
 }
