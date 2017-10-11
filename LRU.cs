@@ -1,33 +1,33 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using UniRx;
-
-namespace J
+﻿namespace J
 {
-	public class LRU<T> : ICollection<T>, IDisposable
+	using System;
+	using System.Collections;
+	using System.Collections.Generic;
+	using UniRx;
+
+	public class LRU<T> : ICollection<T>, IReadOnlyCollection<T>, ICollection, IDisposable
 	{
+		LinkedList<T> list;
+		Dictionary<T, LinkedListNode<T>> dict;
+		Subject<T> expired;
+
 		public LRU(int capacity)
 		{
 			if (capacity < 0)
 			{
 				throw new ArgumentOutOfRangeException();
 			}
+
+			list = new LinkedList<T>();
+			dict = new Dictionary<T, LinkedListNode<T>>();
+			expired = new Subject<T>();
+
 			Capacity = capacity;
 		}
 
 		public int Capacity { get; }
 		public int Count => list.Count;
 		public IObservable<T> Expired => expired;
-
-		ICollection<T> iCollection => list;
-		bool ICollection<T>.IsReadOnly => iCollection.IsReadOnly;
-
-		LinkedList<T> list = new LinkedList<T>();
-		Dictionary<T, LinkedListNode<T>> dict = new Dictionary<T, LinkedListNode<T>>();
-		Subject<T> expired = new Subject<T>();
-
-		void ICollection<T>.Add(T item) => Touch(item);
 
 		public void Clear()
 		{
@@ -37,15 +37,9 @@ namespace J
 
 		public bool Contains(T value) => dict.ContainsKey(value);
 
-		void ICollection<T>.CopyTo(T[] array, int arrayIndex) => list.CopyTo(array, arrayIndex);
-
 		public void Dispose() => expired.Dispose();
 
 		public LinkedList<T>.Enumerator GetEnumerator() => list.GetEnumerator();
-
-		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
-
-		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
 
 		public bool Remove(T item) => Remove(dict.GetOrDefault(item));
 
@@ -91,5 +85,20 @@ namespace J
 			list.Remove(node);
 			list.AddLast(node);
 		}
+
+		#region Interface
+
+		bool ICollection<T>.IsReadOnly => ((ICollection<T>)list).IsReadOnly;
+		void ICollection<T>.Add(T item) => Touch(item);
+		void ICollection<T>.CopyTo(T[] array, int index) => list.CopyTo(array, index);
+
+		bool ICollection.IsSynchronized => ((ICollection)list).IsSynchronized;
+		object ICollection.SyncRoot => ((ICollection)list).SyncRoot;
+		void ICollection.CopyTo(Array array, int index) => ((ICollection)list).CopyTo(array, index);
+
+		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
+		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
+
+		#endregion
 	}
 }
