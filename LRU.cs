@@ -45,7 +45,7 @@
 		IEnumerator<T> IEnumerable<T>.GetEnumerator() => list.GetEnumerator();
 		IEnumerator IEnumerable.GetEnumerator() => list.GetEnumerator();
 
-		public bool Remove(T item) => Remove(dict.GetOrDefault(item));
+		public bool Remove(T value) => Remove(dict.GetOrDefault(value));
 
 		public void Touch(T value)
 		{
@@ -76,7 +76,7 @@
 
 		bool Remove(LinkedListNode<T> node)
 		{
-			if (dict.Remove(node.Value))
+			if (node != null && dict.Remove(node.Value))
 			{
 				list.Remove(node);
 				return true;
