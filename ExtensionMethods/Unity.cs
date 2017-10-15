@@ -1,11 +1,10 @@
 ﻿using System;
+using UniRx;
+using UnityEngine;
 using UnityEngine.Networking;
 
 namespace J
 {
-	using UniRx;
-	using UnityEngine;
-
 	public static partial class ExtensionMethods
 	{
 		public static T GetOrAddComponent<T>(this GameObject @this) where T : Component
@@ -27,7 +26,9 @@ namespace J
 				{
 					try
 					{
-						return DownloadHandlerAssetBundle.GetContent(@this);
+						AssetBundle ab = DownloadHandlerAssetBundle.GetContent(@this);
+						if (ab == null) throw new Exception();
+						return ab;
 					}
 					catch (Exception)
 					{

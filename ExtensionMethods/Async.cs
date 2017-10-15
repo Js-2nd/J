@@ -1,5 +1,4 @@
-﻿#if NET_4_6
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using UniRx;
@@ -21,13 +20,12 @@ namespace J
 					}
 					subject.OnCompleted();
 				}
-				catch (Exception e)
+				catch (Exception ex)
 				{
-					subject.OnError(e);
+					subject.OnError(ex);
 				}
 			});
 			return subject;
 		}
 	}
 }
-#endif
