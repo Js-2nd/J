@@ -14,12 +14,17 @@
 			}
 		}
 
-		public static T DeserializeFromBytes<T>(this byte[] @this)
+		public static object DeserializeFromBytes(this byte[] @this)
 		{
 			using (var s = new MemoryStream(@this))
 			{
-				return (T)new BinaryFormatter().Deserialize(s);
+				return new BinaryFormatter().Deserialize(s);
 			}
+		}
+
+		public static T DeserializeFromBytes<T>(this byte[] @this)
+		{
+			return (T)@this.DeserializeFromBytes();
 		}
 	}
 }
