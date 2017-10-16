@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using UniRx;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using UniRx;
+
 	public sealed class PrioritySubject<T> : ISubject<T>, IDisposable
 	{
 		SortedDictionary<int, Subject<T>> dict = new SortedDictionary<int, Subject<T>> { { default(int), new Subject<T>() } };
