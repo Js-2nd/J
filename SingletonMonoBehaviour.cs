@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-
-namespace J
+﻿namespace J
 {
+	using UnityEngine;
+
 	public abstract class SingletonMonoBehaviour<T> : MonoBehaviour where T : SingletonMonoBehaviour<T>
 	{
 		public static T Instance { get; private set; }
