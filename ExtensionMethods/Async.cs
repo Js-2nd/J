@@ -1,10 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
-using UniRx;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using System.Threading.Tasks;
+	using UniRx;
+
 	public static partial class ExtensionMethods
 	{
 		public static IObservable<T> ToObservable<T>(this IAsyncEnumerator<T> @this)

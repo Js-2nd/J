@@ -1,8 +1,8 @@
-﻿using System.IO;
-using System.Runtime.Serialization.Formatters.Binary;
-
-namespace J
+﻿namespace J
 {
+	using System.IO;
+	using System.Runtime.Serialization.Formatters.Binary;
+
 	public static partial class ExtensionMethods
 	{
 		public static byte[] SerializeToBytes(this object @this)

@@ -1,9 +1,9 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
-
-namespace J
+﻿namespace J
 {
+	using System.Collections.Generic;
+	using System.Linq;
+	using UnityEngine;
+
 	public static partial class ExtensionMethods
 	{
 		public static IEnumerable<T> ToSingleEnumerable<T>(this T @this)

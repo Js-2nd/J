@@ -1,9 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using System.Collections.ObjectModel;
+
 	public static partial class ExtensionMethods
 	{
 		public static TValue GetOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue))
