@@ -1,7 +1,7 @@
-﻿using System;
-
-namespace J
+﻿namespace J
 {
+	using System;
+
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
 		static string NormBundleName(string bundleName)

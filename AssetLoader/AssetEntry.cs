@@ -1,8 +1,7 @@
-﻿using System;
-
-namespace J
+﻿namespace J
 {
-	using UnityEngine;
+	using System;
+	using Object = UnityEngine.Object;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{

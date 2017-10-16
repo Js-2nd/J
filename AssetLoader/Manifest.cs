@@ -1,10 +1,10 @@
-﻿using System;
-using UniRx;
-using UnityEngine;
-using UnityEngine.Networking;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using UniRx;
+	using UnityEngine;
+	using UnityEngine.Networking;
+
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
 		[NonSerialized]

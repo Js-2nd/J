@@ -1,10 +1,10 @@
-﻿using System;
-using UniRx;
-using static J.AssetLoaderInstance;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using UniRx;
 	using UnityEngine;
+	using static J.AssetLoaderInstance;
+	using Object = UnityEngine.Object;
 
 	public static class AssetLoader
 	{

@@ -1,12 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using UniRx;
-using UnityEngine;
-using UnityEngine.Networking;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using UniRx;
+	using UnityEngine;
+	using UnityEngine.Networking;
+
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
 		Dictionary<BundleEntry, ReplaySubject<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, ReplaySubject<AssetBundle>>();

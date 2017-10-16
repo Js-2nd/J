@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-
-namespace J
+﻿namespace J
 {
+	using UnityEngine;
+
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
 		public const string BundleNameSuffix = ".unity3d";

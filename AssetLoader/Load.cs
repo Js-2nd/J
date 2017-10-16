@@ -1,11 +1,10 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using UniRx;
-
-namespace J
+﻿namespace J
 {
-	using UnityEngine;
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using UniRx;
+	using Object = UnityEngine.Object;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{

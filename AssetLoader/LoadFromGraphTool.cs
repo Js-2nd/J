@@ -1,12 +1,12 @@
 ﻿#if UNITY_EDITOR
-using System.Linq;
-using UniRx;
-using UnityEditor;
-using UnityEngine;
-using UnityEngine.AssetBundles.GraphTool;
-
 namespace J
 {
+	using System.Linq;
+	using UniRx;
+	using UnityEditor;
+	using UnityEngine;
+	using UnityEngine.AssetBundles.GraphTool;
+
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
 		ReplaySubject<Object> LoadFromGraphTool(AssetEntry entry)
