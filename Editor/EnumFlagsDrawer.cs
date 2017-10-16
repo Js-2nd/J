@@ -1,11 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEditor;
-using UnityEngine;
-
-namespace J
+﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using System.Linq;
+	using UnityEditor;
+	using UnityEngine;
+
 	[CustomPropertyDrawer(typeof(EnumFlagsAttribute))]
 	public class EnumFlagsDrawer : PropertyDrawer
 	{

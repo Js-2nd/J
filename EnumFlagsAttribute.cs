@@ -1,7 +1,7 @@
-﻿using UnityEngine;
-
-namespace J
+﻿namespace J
 {
+	using UnityEngine;
+
 	public class EnumFlagsAttribute : PropertyAttribute
 	{
 		public int[] layout;
