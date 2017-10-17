@@ -19,9 +19,9 @@
 			return @this.gameObject.GetOrAddComponent<T>();
 		}
 
-		public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest @this)
+		public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest @this, IProgress<float> progress = null)
 		{
-			return Observable.Defer(() => @this.Send().AsObservable()
+			return Observable.Defer(() => @this.Send().AsObservable(progress)
 				.Select(_ =>
 				{
 					try
