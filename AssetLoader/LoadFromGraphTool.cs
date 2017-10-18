@@ -17,8 +17,7 @@ namespace J
 			{
 				throw new System.Exception(string.Format("Asset not found. {0}", entry));
 			}
-			paths.Take(1)
-				.SelectMany(path => AssetDatabase.LoadAllAssetsAtPath(path))
+			AssetDatabase.LoadAllAssetsAtPath(paths[0])
 				.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()))
 				.ToObservable()
 				.DelayFrame(1)

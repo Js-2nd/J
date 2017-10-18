@@ -33,28 +33,28 @@
 			return AssetLoaderInstance.Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
 		}
 
-		public static IObservable<Object> Load(string bundleName)
+		public static IObservable<Object> Load(string bundleName, string assetName = null, Type assetType = null)
 		{
-			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName));
-		}
-		public static IObservable<Object> Load(string bundleName, string assetName)
-		{
-			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName));
+			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType)).Take(1);
 		}
 		public static IObservable<Object> Load(string bundleName, Type assetType)
 		{
-			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetType));
+			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetType)).Take(1);
 		}
-		public static IObservable<Object> Load(string bundleName, string assetName, Type assetType)
+		public static IObservable<T> Load<T>(string bundleName, string assetName = null) where T : Object
+		{
+			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T))).Take(1).Select(obj => obj as T);
+		}
+
+		public static IObservable<Object> LoadMulti(string bundleName, string assetName = null, Type assetType = null)
 		{
 			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType));
 		}
-
-		public static IObservable<T> Load<T>(string bundleName) where T : Object
+		public static IObservable<Object> LoadMulti(string bundleName, Type assetType)
 		{
-			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, typeof(T))).Select(obj => obj as T);
+			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetType));
 		}
-		public static IObservable<T> Load<T>(string bundleName, string assetName) where T : Object
+		public static IObservable<T> LoadMulti<T>(string bundleName, string assetName = null) where T : Object
 		{
 			return AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T))).Select(obj => obj as T);
 		}

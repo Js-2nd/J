@@ -19,10 +19,8 @@
 			public string AssetName { get { return base.Item2; } }
 			public Type AssetType { get { return base.Item3; } }
 
-			public AssetEntry(string bundleName) : this(bundleName, DefaultAssetName(bundleName), TypeObject) { }
-			public AssetEntry(string bundleName, string assetName) : this(bundleName, assetName, TypeObject) { }
-			public AssetEntry(string bundleName, Type assetType) : this(bundleName, DefaultAssetName(bundleName), assetType) { }
-			public AssetEntry(string bundleName, string assetName, Type assetType) : base(NormBundleName(bundleName), assetName, assetType) { }
+			public AssetEntry(string bundleName, string assetName = null, Type assetType = null) : base(NormBundleName(bundleName), assetName ?? DefaultAssetName(bundleName), assetType ?? TypeObject) { }
+			public AssetEntry(string bundleName, Type assetType) : this(bundleName, null, assetType) { }
 
 			public BundleEntry ToBundleEntry()
 			{
