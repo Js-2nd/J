@@ -1,6 +1,7 @@
 ﻿namespace J
 {
 	using System;
+	using System.Collections.Generic;
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
@@ -11,6 +12,8 @@
 		public AssetBundleManifest m_Manifest;
 		[NonSerialized]
 		public string m_RootUri;
+
+		Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
 		ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
 
 		public void LoadManifest(string uri)
@@ -29,9 +32,10 @@
 					}
 					else
 					{
-						Debug.Log("AssetBundleManifest loaded");
 						m_Manifest = newManifest;
 						m_RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
+						MapBundleNames();
+						Debug.Log("AssetBundleManifest loaded");
 						m_LoadManifestStatus.Value = LoadManifestStatus.Loaded;
 					}
 				})
@@ -48,6 +52,21 @@
 				}
 				return status == LoadManifestStatus.Loaded;
 			}).Take(1).AsUnitObservable();
+		}
+
+		void MapBundleNames()
+		{
+			m_BundleNames.Clear();
+			foreach (var item in m_Manifest.GetAllAssetBundles())
+			{
+				var name = item;
+				var suffix = "_" + m_Manifest.GetAssetBundleHash(item);
+				if (name.EndsWith(suffix, StringComparison.CurrentCultureIgnoreCase))
+				{
+					name = name.Substring(0, name.Length - suffix.Length);
+				}
+				m_BundleNames.Add(name, item);
+			}
 		}
 
 		enum LoadManifestStatus

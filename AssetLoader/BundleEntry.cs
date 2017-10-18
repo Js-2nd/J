@@ -6,10 +6,6 @@
 	{
 		static string NormBundleName(string bundleName)
 		{
-			if (!bundleName.EndsWith(BundleNameSuffix, StringComparison.CurrentCultureIgnoreCase))
-			{
-				bundleName = bundleName + BundleNameSuffix;
-			}
 			return bundleName.ToLower();
 		}
 

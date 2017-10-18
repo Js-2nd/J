@@ -1,18 +1,16 @@
 ﻿namespace J
 {
 	using System;
-	using Object = UnityEngine.Object;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		static readonly Type TypeObject = typeof(Object);
+		static readonly Type TypeObject = typeof(UnityEngine.Object);
 
 		static string DefaultAssetName(string bundleName)
 		{
 			bundleName = NormBundleName(bundleName);
-			int start = bundleName.LastIndexOfAny(Delimiters) + 1;
-			int end = bundleName.LastIndexOf(BundleNameSuffix);
-			return bundleName.Substring(start, end - start);
+			int index = bundleName.LastIndexOfAny(Delimiters) + 1;
+			return bundleName.Substring(index);
 		}
 
 		public class AssetEntry : Tuple<string, string, Type>

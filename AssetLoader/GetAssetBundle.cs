@@ -18,7 +18,13 @@
 			CompositeDisposable pending = new CompositeDisposable();
 			m_BundlePending.Add(entry, pending);
 			WaitForManifestLoaded()
-				.ContinueWith(_ => UnityWebRequest.GetAssetBundle(m_RootUri + entry.BundleName, m_Manifest.GetAssetBundleHash(entry.BundleName), 0).AsAssetBundleObservable())
+				.ContinueWith(_ =>
+				{
+					var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
+					var uri = m_RootUri + name;
+					var hash = m_Manifest.GetAssetBundleHash(name);
+					return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
+				})
 				.Finally(() => m_BundlePending.Remove(entry))
 				.Subscribe(cache)
 				.AddTo(pending);
