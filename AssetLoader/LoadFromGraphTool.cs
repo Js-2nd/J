@@ -1,10 +1,11 @@
-﻿namespace J
-{
-#if UNITY_EDITOR
-	using UnityEditor;
+﻿#if UNITY_EDITOR
+using UnityEditor;
 #endif
 
+namespace J
+{
 	using System;
+	using System.Collections.Generic;
 	using System.Linq;
 	using UniRx;
 	using UnityEngine.AssetBundles.GraphTool;
@@ -21,11 +22,21 @@
 			{
 				throw new Exception(string.Format("Asset not found. {0}", entry));
 			}
-			AssetDatabase.LoadAllAssetsAtPath(paths[0])
-				.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()))
-				.ToObservable()
-				.DelayFrame(1)
-				.Subscribe(cache);
+			IEnumerable<Object> source;
+			if (entry.LoadMethod == LoadMethod.Single)
+			{
+				source = AssetDatabase.LoadAssetAtPath(paths[0], entry.AssetType).ToSingleEnumerable();
+			}
+			else if (entry.LoadMethod == LoadMethod.Multi)
+			{
+				source = AssetDatabase.LoadAllAssetsAtPath(paths[0])
+					.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()));
+			}
+			else
+			{
+				throw new Exception(string.Format("Unknown LoadMethod. {0}", entry.LoadMethod));
+			}
+			source.ToObservable().DelayFrame(1).Subscribe(cache);
 			return cache;
 #else
 			throw new NotImplementedException();

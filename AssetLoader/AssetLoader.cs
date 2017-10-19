@@ -24,17 +24,17 @@
 			AssetLoaderInstance.Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
 
 		public static IObservable<Object> Load(string bundleName, string assetName = null, Type assetType = null) =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType)).Take(1);
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Single));
 		public static IObservable<Object> Load(string bundleName, Type assetType) =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetType)).Take(1);
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Single));
 		public static IObservable<T> Load<T>(string bundleName, string assetName = null) where T : Object =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T))).Take(1).Select(obj => obj as T);
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Single)).Select(obj => obj as T);
 
 		public static IObservable<Object> LoadMulti(string bundleName, string assetName = null, Type assetType = null) =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType));
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Multi));
 		public static IObservable<Object> LoadMulti(string bundleName, Type assetType) =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetType));
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Multi));
 		public static IObservable<T> LoadMulti<T>(string bundleName, string assetName = null) where T : Object =>
-			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T))).Select(obj => obj as T);
+			AssetLoaderInstance.Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Multi)).Select(obj => obj as T);
 	}
 }
