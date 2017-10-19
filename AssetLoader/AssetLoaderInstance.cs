@@ -4,17 +4,19 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		public static readonly char[] Delimiters = { '/', '\\' };
+		static readonly char[] Delimiters = { '/', '\\' };
 
-		public bool m_DontDestroyOnLoad = true;
-		public bool m_SimulationMode = true;
-		public bool m_AutoLoadManifest = true;
+		[SerializeField] bool m_DontDestroyOnLoad = true;
+		[SerializeField] bool m_SimulationMode = true;
+		[SerializeField] bool m_AutoLoadManifest = true;
 
 		[SerializeField] string STANDALONE_URI;
 		[SerializeField] string ANDROID_URI;
 		[SerializeField] string IOS_URI;
 
-		public string ManifestUri =>
+		bool SimulationMode => Application.isEditor && m_SimulationMode;
+
+		string ManifestUri =>
 #if UNITY_EDITOR
 			STANDALONE_URI
 #elif UNITY_ANDROID
@@ -31,7 +33,7 @@
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
 
-			if (m_AutoLoadManifest && !string.IsNullOrEmpty(ManifestUri))
+			if (!SimulationMode && m_AutoLoadManifest && !string.IsNullOrEmpty(ManifestUri))
 				LoadManifest(ManifestUri);
 		}
 

@@ -9,8 +9,8 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		Dictionary<BundleEntry, ReplaySubject<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, ReplaySubject<AssetBundle>>();
-		DictionaryDisposable<BundleEntry, CompositeDisposable> m_BundlePending = new DictionaryDisposable<BundleEntry, CompositeDisposable>();
+		readonly Dictionary<BundleEntry, ReplaySubject<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, ReplaySubject<AssetBundle>>();
+		readonly DictionaryDisposable<BundleEntry, CompositeDisposable> m_BundlePending = new DictionaryDisposable<BundleEntry, CompositeDisposable>();
 
 		ReplaySubject<AssetBundle> GetAssetBundleCore(BundleEntry entry)
 		{
@@ -21,8 +21,8 @@
 				.ContinueWith(_ =>
 				{
 					var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
-					var uri = m_RootUri + name;
-					var hash = m_Manifest.GetAssetBundleHash(name);
+					var uri = RootUri + name;
+					var hash = Manifest.GetAssetBundleHash(name);
 					return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
 				})
 				.Finally(() => m_BundlePending.Remove(entry))
@@ -40,7 +40,7 @@
 		{
 			return WaitForManifestLoaded()
 				.ContinueWith(_ => entry.BundleName.ToSingleEnumerable()
-					.Concat(m_Manifest.GetAllDependencies(entry.BundleName))
+					.Concat(Manifest.GetAllDependencies(entry.BundleName))
 					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
 					.WhenAll())
 				.SelectMany(bundles => bundles.Take(1))

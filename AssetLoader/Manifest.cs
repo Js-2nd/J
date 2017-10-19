@@ -8,13 +8,11 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		[NonSerialized]
-		public AssetBundleManifest m_Manifest;
-		[NonSerialized]
-		public string m_RootUri;
+		readonly Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
+		readonly ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
 
-		Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
-		ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
+		public AssetBundleManifest Manifest { get; private set; }
+		public string RootUri { get; private set; }
 
 		public void LoadManifest(string uri)
 		{
@@ -32,8 +30,8 @@
 					}
 					else
 					{
-						m_Manifest = newManifest;
-						m_RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
+						Manifest = newManifest;
+						RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
 						MapBundleNames();
 						Debug.Log("AssetBundleManifest loaded");
 						m_LoadManifestStatus.Value = LoadManifestStatus.Loaded;
@@ -57,10 +55,10 @@
 		void MapBundleNames()
 		{
 			m_BundleNames.Clear();
-			foreach (var item in m_Manifest.GetAllAssetBundles())
+			foreach (var item in Manifest.GetAllAssetBundles())
 			{
 				var name = item;
-				var suffix = "_" + m_Manifest.GetAssetBundleHash(item);
+				var suffix = "_" + Manifest.GetAssetBundleHash(item);
 				if (name.EndsWith(suffix, StringComparison.CurrentCultureIgnoreCase))
 				{
 					name = name.Substring(0, name.Length - suffix.Length);

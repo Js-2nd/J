@@ -8,7 +8,7 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		Dictionary<AssetEntry, ReplaySubject<Object>> m_AssetCache = new Dictionary<AssetEntry, ReplaySubject<Object>>();
+		readonly Dictionary<AssetEntry, ReplaySubject<Object>> m_AssetCache = new Dictionary<AssetEntry, ReplaySubject<Object>>();
 
 		ReplaySubject<Object> LoadCore(AssetEntry entry)
 		{
@@ -23,12 +23,10 @@
 		public IObservable<Object> Load(AssetEntry entry)
 		{
 			Func<AssetEntry, ReplaySubject<Object>> method = LoadCore;
-#if UNITY_EDITOR
-			if (m_SimulationMode)
+			if (SimulationMode)
 			{
 				method = LoadFromGraphTool;
 			}
-#endif
 			return m_AssetCache.GetOrAdd(entry, method);
 		}
 	}
