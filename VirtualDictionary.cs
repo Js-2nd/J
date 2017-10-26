@@ -1,6 +1,7 @@
-﻿namespace J
+﻿using SCG = System.Collections.Generic;
+
+namespace J
 {
-	using System;
 	using System.Collections;
 	using System.Collections.Generic;
 
@@ -62,12 +63,13 @@
 		#endregion
 	}
 
-	public static partial class ExtensionMethods
-	{
-		public static TValue GetOrDefault<TKey, TValue>(this VirtualDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue)) =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, @default);
+}
 
-		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this VirtualDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, factory);
-	}
+public static partial class GlobalExtensionMethods
+{
+	public static TValue GetOrDefault<TKey, TValue>(this J.VirtualDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue)) =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultValue);
+
+	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this J.VirtualDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultFactory);
 }
