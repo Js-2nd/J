@@ -8,19 +8,18 @@
 		readonly Subject<float> subject = new Subject<float>();
 
 		CompositeDisposable cancel;
-		float value;
 
-		public float Value => value;
+		public float Value { get; protected set; }
 
-		public void Report(float v)
+		public void Report(float value)
 		{
-			value = v;
-			subject.OnNext(value);
+			Value = value;
+			subject.OnNext(Value);
 		}
 
-		public void ReportDelta(float d) => Report(value + d);
+		public void ReportDelta(float delta) => Report(Value + delta);
 
-		void IObserver<float>.OnNext(float v) => Report(v);
+		void IObserver<float>.OnNext(float value) => Report(value);
 
 		void IObserver<float>.OnError(Exception error) => subject.OnError(error);
 
@@ -38,12 +37,12 @@
 		{
 			if (cancel == null) cancel = new CompositeDisposable();
 			var sub = new DividableProgress();
-			float last = sub.value;
+			float last = sub.Value;
 			sub.Subscribe(current =>
 			{
-				float v = value + (current - last) * weight;
+				float newValue = Value + (current - last) * weight;
 				last = current;
-				Report(v);
+				Report(newValue);
 			}).AddTo(cancel);
 			return sub;
 		}
