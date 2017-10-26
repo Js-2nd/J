@@ -5,26 +5,26 @@
 
 	public static partial class ExtensionMethods
 	{
-		public static byte[] SerializeToBytes(this object @this)
+		public static byte[] SerializeToBytes(this object obj)
 		{
 			using (var s = new MemoryStream())
 			{
-				new BinaryFormatter().Serialize(s, @this);
+				new BinaryFormatter().Serialize(s, obj);
 				return s.ToArray();
 			}
 		}
 
-		public static object DeserializeFromBytes(this byte[] @this)
+		public static object DeserializeFromBytes(this byte[] bytes)
 		{
-			using (var s = new MemoryStream(@this))
+			using (var s = new MemoryStream(bytes))
 			{
 				return new BinaryFormatter().Deserialize(s);
 			}
 		}
 
-		public static T DeserializeFromBytes<T>(this byte[] @this)
+		public static T DeserializeFromBytes<T>(this byte[] bytes)
 		{
-			return (T)@this.DeserializeFromBytes();
+			return (T)bytes.DeserializeFromBytes();
 		}
 	}
 }
