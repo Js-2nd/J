@@ -11,21 +11,34 @@
 		readonly Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
 		readonly ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
 
+		IDisposable m_ManifestPending;
+
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; private set; }
 
 		public void LoadManifest(string uri)
 		{
+			m_ManifestPending?.Dispose();
 			m_LoadManifestStatus.Value = LoadManifestStatus.Loading;
+			AssetBundle manifestBundle = null;
 			AssetBundleManifest newManifest = null;
-			UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
-				.ContinueWith(ab => ab.LoadAllAssetsAsync<AssetBundleManifest>().AsAsyncOperationObservable())
-				.Select(req => newManifest = req.allAssets[0] as AssetBundleManifest)
+			bool disposed = false;
+			m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
+				.ContinueWith(ab => (manifestBundle = ab).LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable())
+				.Select(req =>
+				{
+					newManifest = req.asset as AssetBundleManifest;
+					if (newManifest == null) throw new Exception("AssetBundleManifest not found.");
+					return newManifest;
+				})
+				.DoOnCancel(() => disposed = true)
 				.Finally(() =>
 				{
+					manifestBundle?.Unload(false);
+					if (disposed) return;
 					if (newManifest == null)
 					{
-						Debug.LogError("Failed to load AssetBundleManifest.");
+						Debug.LogWarning("Failed to load AssetBundleManifest.");
 						m_LoadManifestStatus.Value = LoadManifestStatus.NotLoaded;
 					}
 					else

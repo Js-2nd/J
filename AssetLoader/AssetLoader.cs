@@ -8,8 +8,11 @@
 
 	public static class AssetLoader
 	{
-		public static AssetBundleManifest Manifest =>
-			AssetLoaderInstance.Instance.Manifest;
+		public static string InspectorManifestUri => AssetLoaderInstance.Instance.InspectorManifestUri;
+
+		public static AssetBundleManifest Manifest => AssetLoaderInstance.Instance.Manifest;
+
+		public static string RootUri => AssetLoaderInstance.Instance.RootUri;
 
 		public static void LoadManifest(string uri) =>
 			AssetLoaderInstance.Instance.LoadManifest(uri);

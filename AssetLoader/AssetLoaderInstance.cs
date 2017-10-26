@@ -16,7 +16,7 @@
 
 		bool SimulationMode => Application.isEditor && m_SimulationMode;
 
-		string ManifestUri =>
+		public string InspectorManifestUri =>
 #if UNITY_EDITOR
 			STANDALONE_URI
 #elif UNITY_ANDROID
@@ -33,8 +33,8 @@
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
 
-			if (!SimulationMode && m_AutoLoadManifest && !string.IsNullOrEmpty(ManifestUri))
-				LoadManifest(ManifestUri);
+			if (!SimulationMode && m_AutoLoadManifest && !string.IsNullOrEmpty(InspectorManifestUri))
+				LoadManifest(InspectorManifestUri);
 		}
 
 		protected override void SingletonOnDestroy()
