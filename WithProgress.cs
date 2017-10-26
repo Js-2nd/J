@@ -28,13 +28,13 @@
 			var whenAll = source as WhenAllOnCompleted;
 			if (whenAll != null)
 			{
-				progress.ReportWithoutException(0f);
+				progress.Report(0f);
 				return whenAll.SubscribeWithProgress(observer, progress);
 			}
 
 			return source
-				.DoOnSubscribe(() => progress.ReportWithoutException(0f))
-				.DoOnCompleted(() => progress.ReportWithoutException(1f))
+				.DoOnSubscribe(() => progress.Report(0f))
+				.DoOnCompleted(() => progress.Report(1f))
 				.Subscribe(observer);
 		}
 	}
@@ -46,7 +46,7 @@
 			var list = new List<IObservable<Unit>>(sources);
 			if (list.Count == 0)
 			{
-				progress.ReportWithoutException(1f);
+				progress.Report(1f);
 				observer.OnNext(Unit.Default);
 				observer.OnCompleted();
 				return Disposable.Empty;
@@ -56,7 +56,7 @@
 			if (divide == null)
 			{
 				divide = new DividableProgress();
-				divide.Subscribe(v => progress.ReportWithoutException(v));
+				divide.Subscribe(v => progress.Report(v));
 			}
 
 			float weight = 1f / list.Count;
@@ -94,7 +94,7 @@
 				{
 					source.Subscribe(onNext, onError, () =>
 					{
-						divide.ReportWithoutException(divide.Value + weight);
+						divide.ReportDelta(weight);
 						onCompleted();
 					}).AddTo(cancel);
 				}
