@@ -1,7 +1,4 @@
-﻿namespace J
+﻿public static partial class GlobalExtensionMethods
 {
-	public static partial class ExtensionMethods
-	{
-		public static T StaticCast<T>(this T @this) => @this;
-	}
+	public static T StaticCast<T>(this T t) => t;
 }

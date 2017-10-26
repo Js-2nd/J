@@ -1,41 +1,36 @@
-﻿namespace J
+﻿using System;
+using UniRx;
+using UnityEngine;
+using UnityEngine.Networking;
+
+public static partial class GlobalExtensionMethods
 {
-	using System;
-	using UniRx;
-	using UnityEngine;
-	using UnityEngine.Networking;
-
-	public static partial class ExtensionMethods
+	public static T GetOrAddComponent<T>(this GameObject gameObject) where T : Component
 	{
-		public static T GetOrAddComponent<T>(this GameObject @this) where T : Component
-		{
-			T component = @this.GetComponent<T>();
-			if (component == null) component = @this.AddComponent<T>();
-			return component;
-		}
+		T component = gameObject.GetComponent<T>();
+		if (component == null) component = gameObject.AddComponent<T>();
+		return component;
+	}
 
-		public static T GetOrAddComponent<T>(this Component @this) where T : Component
-		{
-			return @this.gameObject.GetOrAddComponent<T>();
-		}
+	public static T GetOrAddComponent<T>(this Component component) where T : Component => component.gameObject.GetOrAddComponent<T>();
 
-		public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest @this, IProgress<float> progress = null)
-		{
-			return Observable.Defer(() => @this.Send().AsObservable(progress)
-				.Select(_ =>
+	public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest request, IProgress<float> progress = null)
+	{
+		return Observable.Defer(() => request.Send().AsObservable(progress)
+			.Select(_ =>
+			{
+				try
 				{
-					try
-					{
-						AssetBundle ab = DownloadHandlerAssetBundle.GetContent(@this);
-						if (ab == null) throw new Exception();
-						return ab;
-					}
-					catch (Exception)
-					{
-						throw new Exception(string.Format("AssetBundle not found. {0}", @this.url));
-					}
-				})
-				.Finally(() => @this.Dispose()));
-		}
+					AssetBundle ab = DownloadHandlerAssetBundle.GetContent(request);
+					if (ab == null) throw new Exception("Invalid AssetBundle");
+					return ab;
+				}
+				catch
+				{
+					Debug.LogErrorFormat("AssetBundle not found. {0}", request.url);
+					throw;
+				}
+			})
+			.Finally(() => request.Dispose()));
 	}
 }

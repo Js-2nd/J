@@ -1,53 +1,51 @@
-﻿namespace J
+﻿using SCG = System.Collections.Generic;
+using SCO = System.Collections.ObjectModel;
+
+public static partial class GlobalExtensionMethods
 {
-	using System;
-	using System.Collections.Generic;
-	using System.Collections.ObjectModel;
+	public static SCO.ReadOnlyDictionary<TKey, TValue> AsReadOnly<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary) => new SCO.ReadOnlyDictionary<TKey, TValue>(dictionary);
 
-	public static partial class ExtensionMethods
+	public static TValue GetOrDefault<TKey, TValue>(this SCG.IReadOnlyDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue))
 	{
-		public static TValue GetOrDefault<TKey, TValue>(this IReadOnlyDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue))
-		{
-			TValue value;
-			if (@this.TryGetValue(key, out value) == false)
-				value = @default;
-			return value;
-		}
-		public static TValue GetOrDefault<TKey, TValue>(this IDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue)) =>
-			new ReadOnlyDictionary<TKey, TValue>(@this).StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, @default);
-		public static TValue GetOrDefault<TKey, TValue>(this ReadOnlyDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue)) =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, @default);
-		public static TValue GetOrDefault<TKey, TValue>(this Dictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue)) =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, @default);
+		TValue value;
+		if (dictionary.TryGetValue(key, out value) == false)
+			value = defaultValue;
+		return value;
+	}
+	public static TValue GetOrDefault<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue)) =>
+		dictionary.AsReadOnly().StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultValue);
+	public static TValue GetOrDefault<TKey, TValue>(this SCG.Dictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue)) =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultValue);
+	public static TValue GetOrDefault<TKey, TValue>(this SCO.ReadOnlyDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue)) =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultValue);
 
-		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this IReadOnlyDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue
-		{
-			TValue value;
-			if (@this.TryGetValue(key, out value) == false)
-				value = factory(key);
-			return value;
-		}
-		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue =>
-			new ReadOnlyDictionary<TKey, TValue>(@this).StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, factory);
-		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this ReadOnlyDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, factory);
-		public static TValue GetOrDefault<TKey, TValue, TNewValue>(this Dictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue =>
-			@this.StaticCast<IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, factory);
+	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this SCG.IReadOnlyDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue
+	{
+		TValue value;
+		if (dictionary.TryGetValue(key, out value) == false)
+			value = defaultFactory(key);
+		return value;
+	}
+	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue =>
+		dictionary.AsReadOnly().StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultFactory);
+	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this SCG.Dictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultFactory);
+	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this SCO.ReadOnlyDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue =>
+		dictionary.StaticCast<SCG.IReadOnlyDictionary<TKey, TValue>>().GetOrDefault(key, defaultFactory);
 
-		public static TValue GetOrAdd<TKey, TValue>(this IDictionary<TKey, TValue> @this, TKey key, TValue @default = default(TValue))
-		{
-			TValue value;
-			if (@this.TryGetValue(key, out value) == false)
-				@this.Add(key, value = @default);
-			return value;
-		}
+	public static TValue GetOrAdd<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue))
+	{
+		TValue value;
+		if (dictionary.TryGetValue(key, out value) == false)
+			dictionary.Add(key, value = defaultValue);
+		return value;
+	}
 
-		public static TValue GetOrAdd<TKey, TValue, TNewValue>(this IDictionary<TKey, TValue> @this, TKey key, Func<TKey, TNewValue> factory) where TNewValue : TValue
-		{
-			TValue value;
-			if (@this.TryGetValue(key, out value) == false)
-				@this.Add(key, value = factory(key));
-			return value;
-		}
+	public static TValue GetOrAdd<TKey, TValue, TNewValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue
+	{
+		TValue value;
+		if (dictionary.TryGetValue(key, out value) == false)
+			dictionary.Add(key, value = defaultFactory(key));
+		return value;
 	}
 }

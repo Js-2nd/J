@@ -1,12 +1,9 @@
-﻿namespace J
-{
-	using System.Collections.Generic;
+﻿using SCG = System.Collections.Generic;
 
-	public static partial class ExtensionMethods
+public static partial class GlobalExtensionMethods
+{
+	public static SCG.IEnumerable<T> ToSingleEnumerable<T>(this T t)
 	{
-		public static IEnumerable<T> ToSingleEnumerable<T>(this T @this)
-		{
-			yield return @this;
-		}
+		yield return t;
 	}
 }
