@@ -30,15 +30,16 @@
 
 		protected override void SingletonAwake()
 		{
+			base.SingletonAwake();
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
-
 			if (!SimulationMode && m_AutoLoadManifest && !string.IsNullOrEmpty(InspectorManifestUri))
 				LoadManifest(InspectorManifestUri);
 		}
 
 		protected override void SingletonOnDestroy()
 		{
+			base.SingletonOnDestroy();
 			m_BundlePending.Dispose();
 		}
 	}
