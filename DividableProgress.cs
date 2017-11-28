@@ -3,48 +3,38 @@
 	using System;
 	using UniRx;
 
-	public class DividableProgress : IProgress<float>, ISubject<float>, IDisposable
+	public class DividableProgress : IProgress<float>, IObservable<float>, IDisposable
 	{
-		readonly Subject<float> subject = new Subject<float>();
+		readonly ReactiveProperty<float> inner = new ReactiveProperty<float>();
 
 		CompositeDisposable cancel;
 
-		public float Value { get; protected set; }
+		public float Value => inner.Value;
 
-		public void Report(float value)
-		{
-			Value = value;
-			subject.OnNext(Value);
-		}
+		public void Report(float value) => inner.Value = value;
 
-		public void ReportDelta(float delta) => Report(Value + delta);
+		public void ReportDelta(float delta) => inner.Value += delta;
 
-		void IObserver<float>.OnNext(float value) => Report(value);
-
-		void IObserver<float>.OnError(Exception error) => subject.OnError(error);
-
-		void IObserver<float>.OnCompleted() => subject.OnCompleted();
-
-		public IDisposable Subscribe(IObserver<float> observer) => subject.Subscribe(observer);
+		public IDisposable Subscribe(IObserver<float> observer) => inner.Subscribe(observer);
 
 		public void Dispose()
 		{
 			cancel?.Dispose();
-			subject.Dispose();
+			inner.Dispose();
 		}
 
 		public DividableProgress Divide(float weight)
 		{
 			if (cancel == null) cancel = new CompositeDisposable();
-			var sub = new DividableProgress();
-			float last = sub.Value;
-			sub.Subscribe(current =>
+			var divide = new DividableProgress();
+			float last = divide.inner.Value;
+			divide.Subscribe(current =>
 			{
-				float newValue = Value + (current - last) * weight;
+				float delta = current - last;
 				last = current;
-				Report(newValue);
+				inner.Value += delta * weight;
 			}).AddTo(cancel);
-			return sub;
+			return divide;
 		}
 	}
 }
