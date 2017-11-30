@@ -7,7 +7,7 @@
 	using UnityEngine;
 	using Object = UnityEngine.Object;
 
-	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
+	public partial class AssetLoaderInstance
 	{
 		readonly Dictionary<AssetEntry, ReplaySubject<Object>> m_AssetCache = new Dictionary<AssetEntry, ReplaySubject<Object>>();
 
@@ -17,33 +17,28 @@
 			Func<AssetBundle, IObservable<Object>> loadFunc;
 			if (entry.LoadMethod == LoadMethod.Single)
 			{
-				loadFunc = bundle => bundle.LoadAssetAsync(entry.AssetName, entry.AssetType).AsAsyncOperationObservable()
+				loadFunc = bundle => bundle
+					.LoadAssetAsync(entry.AssetName, entry.AssetType)
+					.AsAsyncOperationObservable()
 					.Select(req => req.asset);
 			}
 			else if (entry.LoadMethod == LoadMethod.Multi)
 			{
-				loadFunc = bundle => bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType).AsAsyncOperationObservable()
+				loadFunc = bundle => bundle
+					.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
+					.AsAsyncOperationObservable()
 					.SelectMany(req => req.allAssets);
 			}
 			else
 			{
 				throw new Exception(string.Format("Unknown LoadMethod. {0}", entry.LoadMethod));
 			}
-
 			GetAssetBundleWithDependencies(entry.ToBundleEntry())
 				.ContinueWith(loadFunc)
 				.Subscribe(cache);
 			return cache;
 		}
 
-		public IObservable<Object> Load(AssetEntry entry)
-		{
-			Func<AssetEntry, ReplaySubject<Object>> method = LoadCore;
-			if (SimulationMode)
-			{
-				method = LoadFromGraphTool;
-			}
-			return m_AssetCache.GetOrAdd(entry, method);
-		}
+		public IObservable<Object> Load(AssetEntry entry) => m_AssetCache.GetOrAdd(entry, SimulationMode ? (Func<AssetEntry, ReplaySubject<Object>>)LoadFromGraphTool : LoadCore);
 	}
 }

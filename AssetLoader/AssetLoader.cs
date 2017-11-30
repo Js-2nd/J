@@ -4,12 +4,17 @@
 	using UniRx;
 	using UnityEngine;
 	using static J.AssetLoaderInstance;
-	using static J.SingletonMonoBehaviour<AssetLoaderInstance>;
 	using Object = UnityEngine.Object;
 
 	public static class AssetLoader
 	{
-		public static string InspectorManifestUri => Instance.InspectorManifestUri;
+		static AssetLoaderInstance Instance => AssetLoaderInstance.Instance;
+
+		public static bool SimulationMode => Instance.SimulationMode;
+
+		public static bool AutoLoadManifest => Instance.AutoLoadManifest;
+
+		public static string AutoLoadManifestUri => Instance.AutoLoadManifestUri;
 
 		public static AssetBundleManifest Manifest => Instance.Manifest;
 

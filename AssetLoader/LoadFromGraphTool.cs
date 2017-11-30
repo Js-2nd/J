@@ -11,7 +11,7 @@ namespace J
 	using UnityEngine.AssetBundles.GraphTool;
 	using Object = UnityEngine.Object;
 
-	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
+	public partial class AssetLoaderInstance
 	{
 		ReplaySubject<Object> LoadFromGraphTool(AssetEntry entry)
 		{
@@ -20,8 +20,10 @@ namespace J
 			var paths = AssetBundleBuildMap.GetBuildMap().GetAssetPathsFromAssetBundleAndAssetName(entry.BundleName, entry.AssetName);
 			if (paths == null || paths.Length == 0)
 			{
-				throw new Exception(string.Format("Asset not found. {0}", entry));
+				cache.OnError(new Exception(string.Format("Asset not found. {0}", entry)));
+				return cache;
 			}
+
 			IEnumerable<Object> source;
 			if (entry.LoadMethod == LoadMethod.Single)
 			{

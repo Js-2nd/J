@@ -7,7 +7,7 @@
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
+	public partial class AssetLoaderInstance
 	{
 		readonly Dictionary<BundleEntry, ReplaySubject<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, ReplaySubject<AssetBundle>>();
 		readonly DictionaryDisposable<BundleEntry, CompositeDisposable> m_BundlePending = new DictionaryDisposable<BundleEntry, CompositeDisposable>();

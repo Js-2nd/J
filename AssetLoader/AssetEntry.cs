@@ -2,7 +2,7 @@
 {
 	using System;
 
-	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
+	public partial class AssetLoaderInstance
 	{
 		static readonly Type TypeObject = typeof(UnityEngine.Object);
 		static readonly LoadMethod DefaultLoadMethod = LoadMethod.Single;
@@ -16,17 +16,19 @@
 
 		public class AssetEntry : Tuple<string, string, Type, LoadMethod>
 		{
-			public string BundleName { get { return base.Item1; } }
-			public string AssetName { get { return base.Item2; } }
-			public Type AssetType { get { return base.Item3; } }
-			public LoadMethod LoadMethod { get { return base.Item4; } }
+			public string BundleName => base.Item1;
+			public string AssetName => base.Item2;
+			public Type AssetType => base.Item3;
+			public LoadMethod LoadMethod => base.Item4;
 
-			public AssetEntry(string bundleName, string assetName = null, Type assetType = null, LoadMethod? loadMethod = null) : base(NormBundleName(bundleName), assetName ?? DefaultAssetName(bundleName), assetType ?? TypeObject, loadMethod ?? DefaultLoadMethod) { }
+			public AssetEntry(string bundleName, string assetName = null, Type assetType = null, LoadMethod? loadMethod = null) : base(
+				NormBundleName(bundleName),
+				assetName ?? DefaultAssetName(bundleName),
+				assetType ?? TypeObject,
+				loadMethod ?? DefaultLoadMethod)
+			{ }
 
-			public BundleEntry ToBundleEntry()
-			{
-				return new BundleEntry(BundleName);
-			}
+			public BundleEntry ToBundleEntry() => new BundleEntry(BundleName);
 
 			[Obsolete("Use BundleName instead", true)]
 			public new object Item1 { get; }

@@ -6,7 +6,7 @@
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
+	public partial class AssetLoaderInstance
 	{
 		readonly Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
 		readonly ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
@@ -38,7 +38,7 @@
 					if (disposed) return;
 					if (newManifest == null)
 					{
-						Debug.LogWarning("Failed to load AssetBundleManifest.");
+						Debug.LogError("Failed to load AssetBundleManifest.");
 						m_LoadManifestStatus.Value = LoadManifestStatus.NotLoaded;
 					}
 					else

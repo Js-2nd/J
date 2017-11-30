@@ -14,9 +14,9 @@
 		[SerializeField] string ANDROID_URI;
 		[SerializeField] string IOS_URI;
 
-		bool SimulationMode => Application.isEditor && m_SimulationMode;
-
-		public string InspectorManifestUri =>
+		public bool SimulationMode => Application.isEditor && m_SimulationMode;
+		public bool AutoLoadManifest => m_AutoLoadManifest;
+		public string AutoLoadManifestUri =>
 #if UNITY_EDITOR
 			STANDALONE_URI
 #elif UNITY_ANDROID
@@ -33,8 +33,8 @@
 			base.SingletonAwake();
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
-			if (!SimulationMode && m_AutoLoadManifest && !string.IsNullOrEmpty(InspectorManifestUri))
-				LoadManifest(InspectorManifestUri);
+			if (!SimulationMode && AutoLoadManifest && !string.IsNullOrWhiteSpace(AutoLoadManifestUri))
+				LoadManifest(AutoLoadManifestUri);
 		}
 
 		protected override void SingletonOnDestroy()
