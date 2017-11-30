@@ -73,7 +73,7 @@
 					var whenAll = source as WhenAllWithProgress;
 					if (whenAll != null)
 					{
-						whenAll.AddProgress(progress.Divide(weight))
+						whenAll.AddProgress(total > 1 ? progress.Divide(weight) : progress)
 							.Subscribe(this).AddTo(cancel);
 					}
 					else
