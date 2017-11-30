@@ -10,7 +10,11 @@
 	{
 		List<Func<DividableProgress, IObservable<Unit>>> list = new List<Func<DividableProgress, IObservable<Unit>>>();
 
-		public void AddTask(Func<DividableProgress, IObservable<Unit>> task) => list.Add(task);
+		public void AddObservable<T>(IObservable<T> observable) => list.Add(p => observable.Finally(() => p?.Report(1f)).AsUnitObservable());
+
+		public void AddObservable(IObservable<Unit> observable) => list.Add(p => observable.Finally(() => p?.Report(1f)));
+
+		public void AddObservable(Func<DividableProgress, IObservable<Unit>> observable) => list.Add(observable);
 
 		public void AddCoroutine(Func<DividableProgress, IEnumerator> coroutine) => list.Add(p => coroutine(p).ToObservable());
 
