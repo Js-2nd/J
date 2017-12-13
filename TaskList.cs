@@ -14,13 +14,21 @@
 
 		public void Clear() => list.Clear();
 
-		public void AddObservable(Func<DividableProgress, IObservable<Unit>> observable) => list.Add(observable);
+		public void AddObservable(IObservable<Unit> observable) =>
+			list.Add(progress => observable.DoOnCompleted(() => progress?.Report(1f)));
+		public void AddObservable<T>(IObservable<T> observable) =>
+			list.Add(progress => observable.DoOnCompleted(() => progress?.Report(1f)).AsUnitObservable());
 
-		public void AddObservable(IObservable<Unit> observable) => list.Add(p => observable.Finally(() => p?.Report(1f)));
-
-		public void AddObservable<T>(IObservable<T> observable) => list.Add(p => observable.Finally(() => p?.Report(1f)).AsUnitObservable());
-
-		public void AddCoroutine(Func<DividableProgress, IEnumerator> coroutine) => list.Add(p => coroutine(p).ToObservable());
+		public void AddCoroutine(Func<DividableProgress, IEnumerator> coroutine) =>
+			list.Add(progress => coroutine(progress).ToObservable());
+		public void AddCoroutine<T1>(Func<T1, DividableProgress, IEnumerator> coroutine, T1 arg1) =>
+			list.Add(progress => coroutine(arg1, progress).ToObservable());
+		public void AddCoroutine<T1, T2>(Func<T1, T2, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2) =>
+			list.Add(progress => coroutine(arg1, arg2, progress).ToObservable());
+		public void AddCoroutine<T1, T2, T3>(Func<T1, T2, T3, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3) =>
+			list.Add(progress => coroutine(arg1, arg2, arg3, progress).ToObservable());
+		public void AddCoroutine<T1, T2, T3, T4>(Func<T1, T2, T3, T4, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3, T4 arg4) =>
+			list.Add(progress => coroutine(arg1, arg2, arg3, arg4, progress).ToObservable());
 
 		public void AddTaskList(TaskList taskList) => list.Add(taskList.Start);
 
@@ -28,19 +36,8 @@
 
 		public IObservable<Unit> Start(DividableProgress progress = null)
 		{
-			if (Count == 0)
-			{
-				progress?.Report(1f);
-				return Observable.ReturnUnit();
-			}
-
-			if (Count == 1)
-			{
-				return list[0](progress);
-			}
-
-			float weight = 1f / Count;
-			return list.Select(task => task(progress?.Divide(weight))).WhenAll();
+			return list.Select(task => task(Count == 1 ? progress : progress?.Divide(1f / Count)))
+				.WhenAll().DoOnCompleted(() => progress?.Report(1f));
 		}
 	}
 }
