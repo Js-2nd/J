@@ -6,7 +6,12 @@ using UniRx;
 
 public static partial class GlobalExtensionMethods
 {
-	public static IObservable<T> ToObservable<T>(this IAsyncEnumerator<T> asyncEnumerator, CancellationToken cancellationToken = default(CancellationToken))
+	public static IObservable<T> ToObservable<T>(this IAsyncEnumerator<T> asyncEnumerator)
+	{
+		return ToObservable(asyncEnumerator, CancellationToken.None);
+	}
+
+	public static IObservable<T> ToObservable<T>(this IAsyncEnumerator<T> asyncEnumerator, CancellationToken cancellationToken)
 	{
 		Subject<T> subject = new Subject<T>();
 		Task.Run(async () =>
@@ -22,6 +27,10 @@ public static partial class GlobalExtensionMethods
 			catch (Exception ex)
 			{
 				subject.OnError(ex);
+			}
+			finally
+			{
+				subject.Dispose();
 			}
 		});
 		return subject;
