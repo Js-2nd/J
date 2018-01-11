@@ -8,7 +8,7 @@ namespace J
 	using System.Collections.Generic;
 	using System.Linq;
 	using UniRx;
-	using UnityEngine.AssetBundles.GraphTool;
+	using UnityEngine.AssetGraph;
 	using Object = UnityEngine.Object;
 
 	public partial class AssetLoaderInstance
