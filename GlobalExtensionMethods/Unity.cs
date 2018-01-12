@@ -16,7 +16,7 @@ public static partial class GlobalExtensionMethods
 
 	public static IObservable<AssetBundle> AsAssetBundleObservable(this UnityWebRequest request, IProgress<float> progress = null)
 	{
-		return Observable.Defer(() => request.Send().AsObservable(progress)
+		return Observable.Defer(() => request.SendWebRequest().AsObservable(progress)
 			.Select(_ =>
 			{
 				try
