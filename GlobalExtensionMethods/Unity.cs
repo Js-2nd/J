@@ -19,16 +19,14 @@ public static partial class GlobalExtensionMethods
 		return Observable.Defer(() => request.SendWebRequest().AsObservable(progress)
 			.Select(_ =>
 			{
-				try
-				{
-					AssetBundle ab = DownloadHandlerAssetBundle.GetContent(request);
-					if (ab == null) throw new Exception("Invalid AssetBundle");
-					return ab;
-				}
-				catch (Exception ex)
-				{
-					throw new Exception(string.Format("AssetBundle not found. {0}", request.url), ex);
-				}
+				if (request.isNetworkError)
+					throw new Exception(string.Format("{0}\n{1}", request.error, request.url));
+				if (request.isHttpError)
+					throw new Exception(string.Format("HTTP{0} {1}", request.responseCode, request.url));
+				AssetBundle ab = DownloadHandlerAssetBundle.GetContent(request);
+				if (ab == null)
+					throw new Exception(string.Format("Invalid AssetBundle {0}", request.url));
+				return ab;
 			})
 			.Finally(() => request.Dispose()));
 	}
