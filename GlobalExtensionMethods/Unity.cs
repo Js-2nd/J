@@ -25,10 +25,9 @@ public static partial class GlobalExtensionMethods
 					if (ab == null) throw new Exception("Invalid AssetBundle");
 					return ab;
 				}
-				catch
+				catch (Exception ex)
 				{
-					Debug.LogErrorFormat("AssetBundle not found. {0}", request.url);
-					throw;
+					throw new Exception(string.Format("AssetBundle not found. {0}", request.url), ex);
 				}
 			})
 			.Finally(() => request.Dispose()));
