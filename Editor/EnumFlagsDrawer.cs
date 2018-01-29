@@ -12,6 +12,7 @@
 		const float ZeroHeight = 1 / 3f;
 
 		List<int> layout;
+		bool showIntField;
 		KeyValuePair<int, string>[] flags;
 		int everythingValue;
 		float propertyHeight;
@@ -27,7 +28,11 @@
 			if (flags != null) return;
 
 			EnumFlagsAttribute attr = attribute as EnumFlagsAttribute;
-			if (attr != null) layout = attr.layout.ToList();
+			if (attr != null)
+			{
+				layout = attr.Layout.ToList();
+				showIntField = attr.ShowIntField;
+			}
 			if (layout == null) layout = new List<int>();
 
 			var values = Enum.GetValues(fieldInfo.FieldType);
@@ -71,10 +76,14 @@
 			bool state;
 			Rect pos = position;
 			pos.x = fieldX;
-			pos.width = fieldWidth / 3;
+			pos.width = fieldWidth / (showIntField ? 3 : 2);
 			pos.height = EditorGUIUtility.singleLineHeight;
-			int value = EditorGUI.DelayedIntField(pos, property.intValue);
-			pos.x += pos.width;
+			int value = property.intValue;
+			if (showIntField)
+			{
+				value = EditorGUI.IntField(pos, value);
+				pos.x += pos.width;
+			}
 			if (GUI.Toggle(pos, state = value == 0, "Nothing", "Button") != state) value = 0;
 			pos.x += pos.width;
 			if (GUI.Toggle(pos, state = value == everythingValue, "Everything", "Button") != state) value = everythingValue;

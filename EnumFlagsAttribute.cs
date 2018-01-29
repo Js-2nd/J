@@ -4,11 +4,12 @@
 
 	public class EnumFlagsAttribute : PropertyAttribute
 	{
-		public int[] layout;
+		public int[] Layout;
+		public bool ShowIntField;
 
 		public EnumFlagsAttribute(params int[] layout)
 		{
-			this.layout = layout;
+			Layout = layout;
 		}
 	}
 }
