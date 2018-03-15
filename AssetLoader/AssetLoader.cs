@@ -3,8 +3,8 @@
 	using System;
 	using UniRx;
 	using UnityEngine;
-	using static J.AssetLoaderInstance;
 	using Object = UnityEngine.Object;
+	using static J.AssetLoaderInstance;
 
 	public static class AssetLoader
 	{
