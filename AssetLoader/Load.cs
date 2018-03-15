@@ -9,6 +9,8 @@
 
 	public partial class AssetLoaderInstance
 	{
+		public delegate IObservable<Object> LoadDelegate(AssetEntry entry);
+
 		readonly Dictionary<AssetEntry, ReplaySubject<Object>> m_AssetCache = new Dictionary<AssetEntry, ReplaySubject<Object>>();
 
 		ReplaySubject<Object> LoadCore(AssetEntry entry)
