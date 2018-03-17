@@ -1,4 +1,6 @@
-﻿namespace J
+﻿using J.Internal;
+
+namespace J
 {
 	using System;
 	using System.Collections.Generic;
@@ -36,6 +38,15 @@
 				}
 			});
 			return subject;
+		}
+	}
+
+	namespace Internal
+	{
+		public interface IAsyncEnumerator<out T> : IDisposable
+		{
+			T Current { get; }
+			Task<bool> MoveNext(CancellationToken cancellationToken);
 		}
 	}
 }
