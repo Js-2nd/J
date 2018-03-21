@@ -19,6 +19,7 @@
 
 		static AssetGraphLoader()
 		{
+			Load = _ => Observable.Throw<Object>(new NotSupportedException());
 #if UNITY_EDITOR
 			var type = CompilationPipeline.GetAssemblies()
 				.Select(asm => Type.GetType("UnityEngine.AssetGraph.AssetBundleBuildMap, " + asm.name))
@@ -43,7 +44,6 @@
 				};
 			}
 #endif
-			Load = _ => Observable.Throw<Object>(new NotSupportedException());
 		}
 	}
 }
