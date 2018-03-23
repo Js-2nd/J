@@ -788,8 +788,7 @@ namespace J {
         }
 
         public override string ToString() {
-            // Up to 10 decimal places
-            return ((decimal)this).ToString("0.##########");
+            return ((float)this).ToString();
         }
 
         public static Fix64 FromRaw(long rawValue) {
