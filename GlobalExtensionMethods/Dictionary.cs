@@ -36,4 +36,11 @@ public static partial class GlobalExtensionMethods
 			dictionary.Add(key, value = defaultFactory(key));
 		return value;
 	}
+
+	public static int Increment<TKey>(this SCG.IDictionary<TKey, int> dictionary, TKey key, int count = 1, int defaultValue = 0)
+	{
+		int value = dictionary.GetOrDefault(key, defaultValue) + count;
+		dictionary[key] = value;
+		return value;
+	}
 }
