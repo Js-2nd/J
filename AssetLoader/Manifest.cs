@@ -11,24 +11,24 @@
 		readonly Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
 		readonly ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
 
-		IDisposable m_ManifestPending;
-
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; private set; }
 
-		public void LoadManifest(string uri)
+		IDisposable m_ManifestPending;
+		public IDisposable LoadManifest(string uri)
 		{
 			m_ManifestPending?.Dispose();
 			m_LoadManifestStatus.Value = LoadManifestStatus.Loading;
 			AssetBundle manifestBundle = null;
 			AssetBundleManifest newManifest = null;
 			bool disposed = false;
-			m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
+			return m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
 				.ContinueWith(ab => (manifestBundle = ab).LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable())
 				.Select(req =>
 				{
 					newManifest = req.asset as AssetBundleManifest;
-					if (newManifest == null) throw new Exception("AssetBundleManifest not found.");
+					if (newManifest == null)
+						throw new Exception("AssetBundleManifest not found.");
 					return newManifest;
 				})
 				.DoOnCancel(() => disposed = true)
@@ -46,7 +46,7 @@
 						Manifest = newManifest;
 						RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
 						MapBundleNames();
-						Debug.Log("AssetBundleManifest loaded");
+						Debug.Log("AssetBundleManifest loaded.");
 						m_LoadManifestStatus.Value = LoadManifestStatus.Loaded;
 					}
 				})
@@ -58,9 +58,7 @@
 			return m_LoadManifestStatus.Where(status =>
 			{
 				if (status == LoadManifestStatus.NotLoaded)
-				{
 					throw new Exception("No AssetBundleManifest loading or loaded.");
-				}
 				return status == LoadManifestStatus.Loaded;
 			}).Take(1).AsUnitObservable();
 		}
@@ -72,10 +70,8 @@
 			{
 				var name = item;
 				var suffix = "_" + Manifest.GetAssetBundleHash(item);
-				if (name.EndsWith(suffix, StringComparison.CurrentCultureIgnoreCase))
-				{
+				if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
 					name = name.Substring(0, name.Length - suffix.Length);
-				}
 				m_BundleNames.Add(name, item);
 			}
 		}

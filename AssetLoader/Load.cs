@@ -1,46 +1,26 @@
 ﻿namespace J
 {
 	using System;
-	using System.Collections.Generic;
 	using System.Linq;
 	using UniRx;
-	using UnityEngine;
 	using Object = UnityEngine.Object;
 
 	public partial class AssetLoaderInstance
 	{
-		public delegate IObservable<Object> LoadDelegate(AssetEntry entry);
-
-		readonly Dictionary<AssetEntry, ReplaySubject<Object>> m_AssetCache = new Dictionary<AssetEntry, ReplaySubject<Object>>();
-
-		ReplaySubject<Object> LoadCore(AssetEntry entry)
+		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			var cache = new ReplaySubject<Object>();
-			Func<AssetBundle, IObservable<Object>> loadFunc;
-			if (entry.LoadMethod == LoadMethod.Single)
+			return GetAssetBundleWithDependencies(entry.ToBundleEntry()).ContinueWith(bundle =>
 			{
-				loadFunc = bundle => bundle
-					.LoadAssetAsync(entry.AssetName, entry.AssetType)
-					.AsAsyncOperationObservable()
-					.Select(req => req.asset);
-			}
-			else if (entry.LoadMethod == LoadMethod.Multi)
-			{
-				loadFunc = bundle => bundle
-					.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
-					.AsAsyncOperationObservable()
-					.SelectMany(req => req.allAssets);
-			}
-			else
-			{
+				if (entry.LoadMethod == LoadMethod.Single)
+					return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)
+						.AsAsyncOperationObservable().Select(req => req.asset);
+				if (entry.LoadMethod == LoadMethod.Multi)
+					return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
+						.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
 				throw new Exception(string.Format("Unknown LoadMethod. {0}", entry.LoadMethod));
-			}
-			GetAssetBundleWithDependencies(entry.ToBundleEntry())
-				.ContinueWith(loadFunc)
-				.Subscribe(cache);
-			return cache;
+			});
 		}
 
-		public IObservable<Object> Load(AssetEntry entry) => m_AssetCache.GetOrAdd(entry, SimulationMode ? (Func<AssetEntry, ReplaySubject<Object>>)LoadFromGraphTool : LoadCore);
+		public IObservable<Object> Load(AssetEntry entry) => (SimulationMode ? AssetGraphLoader.Load : LoadCore)(entry);
 	}
 }

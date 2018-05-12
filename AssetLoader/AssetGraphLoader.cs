@@ -10,15 +10,16 @@
 	using Object = UnityEngine.Object;
 	using static AssetLoaderInstance;
 
-	class AssetGraphLoader
+	public class AssetGraphLoader
 	{
-		delegate string[] GetAssetPathsDelegate(string assetbundleName, string assetName);
+		delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
 
 		public static readonly bool IsValid;
-		public static readonly LoadDelegate Load;
+		public static readonly Func<AssetEntry, IObservable<Object>> Load;
 
 		static AssetGraphLoader()
 		{
+			IsValid = false;
 			Load = _ => Observable.Throw<Object>(new NotSupportedException());
 #if UNITY_EDITOR
 			var type = CompilationPipeline.GetAssemblies()
@@ -31,16 +32,16 @@
 				IsValid = true;
 				Load = entry =>
 				{
-					var paths = getAssetPaths(entry.BundleName, entry.AssetName);
-					if (paths == null || paths.Length == 0)
+					var path = getAssetPaths(entry.BundleName, entry.AssetName)?.FirstOrDefault();
+					if (string.IsNullOrEmpty(path))
 						return Observable.Throw<Object>(new Exception("Asset not found. " + entry));
 					if (entry.LoadMethod == LoadMethod.Single)
-						return Observable.Return(AssetDatabase.LoadAssetAtPath(paths[0], entry.AssetType));
-					else if (entry.LoadMethod == LoadMethod.Multi)
-						return AssetDatabase.LoadAllAssetsAtPath(paths[0])
+						return Observable.Return(AssetDatabase.LoadAssetAtPath(path, entry.AssetType));
+					if (entry.LoadMethod == LoadMethod.Multi)
+						return AssetDatabase.LoadAllAssetsAtPath(path)
 							.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()))
 							.ToObservable();
-					else throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
+					throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
 				};
 			}
 #endif

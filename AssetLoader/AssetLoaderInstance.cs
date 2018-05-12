@@ -14,7 +14,7 @@
 		[SerializeField] string ANDROID_URI;
 		[SerializeField] string IOS_URI;
 
-		public bool SimulationMode => Application.isEditor && m_SimulationMode;
+		public bool SimulationMode => Application.isEditor && m_SimulationMode && AssetGraphLoader.IsValid;
 		public bool AutoLoadManifest => m_AutoLoadManifest;
 		public string AutoLoadManifestUri =>
 #if UNITY_EDITOR
