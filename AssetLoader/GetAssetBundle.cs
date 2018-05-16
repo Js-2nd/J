@@ -9,31 +9,22 @@
 
 	public partial class AssetLoaderInstance
 	{
-		readonly Dictionary<BundleEntry, ReplaySubject<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, ReplaySubject<AssetBundle>>();
-		readonly DictionaryDisposable<BundleEntry, CompositeDisposable> m_BundlePending = new DictionaryDisposable<BundleEntry, CompositeDisposable>();
+		readonly Dictionary<BundleEntry, IObservable<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
 
-		ReplaySubject<AssetBundle> GetAssetBundleCore(BundleEntry entry)
+		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry)
 		{
-			var cache = new ReplaySubject<AssetBundle>();
-			CompositeDisposable pending = new CompositeDisposable();
-			m_BundlePending.Add(entry, pending);
-			WaitForManifestLoaded()
-				.ContinueWith(_ =>
-				{
-					var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
-					var uri = RootUri + name;
-					var hash = Manifest.GetAssetBundleHash(name);
-					return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
-				})
-				.Finally(() => m_BundlePending.Remove(entry))
-				.Subscribe(cache)
-				.AddTo(pending);
-			return cache;
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
+				var uri = RootUri + name;
+				var hash = Manifest.GetAssetBundleHash(name);
+				return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
+			});
 		}
 
 		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
 		{
-			return m_BundleCache.GetOrAdd(entry, GetAssetBundleCore);
+			return m_BundleCache.GetOrAdd(entry, e => GetAssetBundleCore(e).Replay(Scheduler.MainThreadIgnoreTimeScale));
 		}
 
 		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry)

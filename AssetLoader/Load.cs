@@ -17,7 +17,7 @@
 				if (entry.LoadMethod == LoadMethod.Multi)
 					return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
 						.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
-				throw new Exception(string.Format("Unknown LoadMethod. {0}", entry.LoadMethod));
+				throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
 			});
 		}
 

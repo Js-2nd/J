@@ -36,11 +36,5 @@
 			if (!SimulationMode && AutoLoadManifest && !string.IsNullOrWhiteSpace(AutoLoadManifestUri))
 				LoadManifest(AutoLoadManifestUri);
 		}
-
-		protected override void SingletonOnDestroy()
-		{
-			base.SingletonOnDestroy();
-			m_BundlePending.Dispose();
-		}
 	}
 }

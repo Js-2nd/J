@@ -34,13 +34,13 @@
 				{
 					var path = getAssetPaths(entry.BundleName, entry.AssetName)?.FirstOrDefault();
 					if (string.IsNullOrEmpty(path))
-						return Observable.Throw<Object>(new Exception("Asset not found. " + entry));
+						return Observable.Throw<Object>(new Exception("Asset not found. " + entry), Scheduler.MainThreadIgnoreTimeScale);
 					if (entry.LoadMethod == LoadMethod.Single)
-						return Observable.Return(AssetDatabase.LoadAssetAtPath(path, entry.AssetType));
+						return Observable.Return(AssetDatabase.LoadAssetAtPath(path, entry.AssetType), Scheduler.MainThreadIgnoreTimeScale);
 					if (entry.LoadMethod == LoadMethod.Multi)
 						return AssetDatabase.LoadAllAssetsAtPath(path)
 							.Where(obj => entry.AssetType.IsAssignableFrom(obj.GetType()))
-							.ToObservable();
+							.ToObservable(Scheduler.MainThreadIgnoreTimeScale);
 					throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
 				};
 			}

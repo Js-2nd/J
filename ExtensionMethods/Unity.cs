@@ -18,7 +18,7 @@
 						throw new Exception(string.Format("HTTP{0} {1}", request.responseCode, request.url));
 					AssetBundle ab = DownloadHandlerAssetBundle.GetContent(request);
 					if (ab == null)
-						throw new Exception(string.Format("Invalid AssetBundle {0}", request.url));
+						throw new Exception("Invalid AssetBundle. " + request.url);
 					return ab;
 				})
 				.Finally(() => request.Dispose()));
