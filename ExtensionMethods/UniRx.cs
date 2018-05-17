@@ -1,7 +1,6 @@
-﻿namespace J
+﻿namespace UniRx
 {
 	using System;
-	using UniRx;
 
 	public static partial class ExtensionMethods
 	{
