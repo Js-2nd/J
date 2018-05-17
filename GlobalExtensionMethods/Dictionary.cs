@@ -8,15 +8,15 @@ public static partial class GlobalExtensionMethods
 	public static TValue GetOrDefault<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue))
 	{
 		TValue value;
-		if (dictionary.TryGetValue(key, out value) == false)
+		if (!dictionary.TryGetValue(key, out value))
 			value = defaultValue;
 		return value;
 	}
 
-	public static TValue GetOrDefault<TKey, TValue, TNewValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue
+	public static TValue GetOrDefault<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TValue> defaultFactory)
 	{
 		TValue value;
-		if (dictionary.TryGetValue(key, out value) == false)
+		if (!dictionary.TryGetValue(key, out value))
 			value = defaultFactory(key);
 		return value;
 	}
@@ -24,15 +24,15 @@ public static partial class GlobalExtensionMethods
 	public static TValue GetOrAdd<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, TValue defaultValue = default(TValue))
 	{
 		TValue value;
-		if (dictionary.TryGetValue(key, out value) == false)
+		if (!dictionary.TryGetValue(key, out value))
 			dictionary.Add(key, value = defaultValue);
 		return value;
 	}
 
-	public static TValue GetOrAdd<TKey, TValue, TNewValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TNewValue> defaultFactory) where TNewValue : TValue
+	public static TValue GetOrAdd<TKey, TValue>(this SCG.IDictionary<TKey, TValue> dictionary, TKey key, System.Func<TKey, TValue> defaultFactory)
 	{
 		TValue value;
-		if (dictionary.TryGetValue(key, out value) == false)
+		if (!dictionary.TryGetValue(key, out value))
 			dictionary.Add(key, value = defaultFactory(key));
 		return value;
 	}
