@@ -7,34 +7,15 @@
 	{
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source)
 		{
-			foreach (var item in source)
-			{
-				yield return item;
-				yield break;
-			}
+			return source.Take(1);
 		}
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source, Func<T, bool> predicate)
 		{
-			foreach (var item in source)
-			{
-				if (predicate(item))
-				{
-					yield return item;
-					yield break;
-				}
-			}
+			return source.Where(predicate).Take(1);
 		}
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source, Func<T, int, bool> predicate)
 		{
-			int count = 0;
-			foreach (var item in source)
-			{
-				if (predicate(item, count++))
-				{
-					yield return item;
-					yield break;
-				}
-			}
+			return source.Where(predicate).Take(1);
 		}
 
 		public static IEnumerable<T> ToSingleEnumerable<T>(this T t)
