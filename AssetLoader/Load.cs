@@ -9,7 +9,7 @@
 	{
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			return GetAssetBundleWithDependencies(entry.ToBundleEntry()).ContinueWith(bundle =>
+			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(bundle =>
 			{
 				if (entry.LoadMethod == LoadMethod.Single)
 					return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)

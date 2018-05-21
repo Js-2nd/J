@@ -22,7 +22,7 @@
 			AssetBundle manifestBundle = null;
 			AssetBundleManifest newManifest = null;
 			bool disposed = false;
-			return m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).AsAssetBundleObservable()
+			return m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).ToAssetBundleObservable()
 				.ContinueWith(ab => (manifestBundle = ab).LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable())
 				.Select(req =>
 				{
@@ -55,12 +55,19 @@
 
 		public IObservable<Unit> WaitForManifestLoaded()
 		{
-			return m_LoadManifestStatus.Where(status =>
+			return Observable.Defer(() =>
 			{
-				if (status == LoadManifestStatus.NotLoaded)
-					throw new Exception("No AssetBundleManifest loading or loaded.");
-				return status == LoadManifestStatus.Loaded;
-			}).Take(1).AsUnitObservable();
+				if (Foo(m_LoadManifestStatus.Value))
+					return Observable.ReturnUnit();
+				return m_LoadManifestStatus.Where(Foo).Take(1).AsUnitObservable();
+			});
+		}
+
+		bool Foo(LoadManifestStatus status)
+		{
+			if (status == LoadManifestStatus.NotLoaded)
+				throw new Exception("No AssetBundleManifest loading or loaded.");
+			return status == LoadManifestStatus.Loaded;
 		}
 
 		void MapBundleNames()

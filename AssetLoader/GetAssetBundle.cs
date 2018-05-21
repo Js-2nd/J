@@ -18,13 +18,16 @@
 				var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
 				var uri = RootUri + name;
 				var hash = Manifest.GetAssetBundleHash(name);
-				return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
+				return UnityWebRequest.GetAssetBundle(uri, hash, 0).ToAssetBundleObservable();
 			});
 		}
 
 		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
 		{
-			return m_BundleCache.GetOrAdd(entry, e => GetAssetBundleCore(e).Replay(Scheduler.MainThreadIgnoreTimeScale));
+			return m_BundleCache.GetOrAdd(entry, e =>
+			{
+				return GetAssetBundleCore(e).Replay(Scheduler.MainThreadIgnoreTimeScale);
+			});
 		}
 
 		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry)

@@ -7,14 +7,14 @@
 		static readonly char[] Delimiters = { '/', '\\' };
 
 		[SerializeField] bool m_DontDestroyOnLoad = true;
-		[SerializeField] bool m_SimulationMode = true;
+		[SerializeField] Simulation m_SimulationMode = Simulation.AssetDatabase;
 		[SerializeField] bool m_AutoLoadManifest = true;
 
 		[SerializeField] string STANDALONE_URI;
 		[SerializeField] string ANDROID_URI;
 		[SerializeField] string IOS_URI;
 
-		public bool SimulationMode => Application.isEditor && m_SimulationMode && AssetGraphLoader.IsValid;
+		public bool SimulationMode => Application.isEditor && m_SimulationMode != Simulation.Disable && AssetGraphLoader.IsValid;
 		public bool AutoLoadManifest => m_AutoLoadManifest;
 		public string AutoLoadManifestUri =>
 #if UNITY_EDITOR
