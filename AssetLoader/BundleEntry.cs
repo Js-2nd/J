@@ -10,14 +10,16 @@
 
 			public BundleEntry(string bundleName)
 			{
-				BundleName = bundleName != null ? bundleName.ToLower() : string.Empty;
+				if (bundleName == null)
+					throw new ArgumentNullException(nameof(bundleName));
+				BundleName = bundleName.ToLower();
 			}
 
 			public bool Equals(BundleEntry other) => BundleName == other?.BundleName;
 
 			public override bool Equals(object obj) => Equals(obj as BundleEntry);
 
-			public override int GetHashCode() => BundleName?.GetHashCode() ?? 0;
+			public override int GetHashCode() => BundleName.GetHashCode();
 
 			public static bool operator ==(BundleEntry lhs, BundleEntry rhs)
 			{
