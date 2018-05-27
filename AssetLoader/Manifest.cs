@@ -6,84 +6,100 @@
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public partial class AssetLoaderInstance
+	partial class AssetLoaderInstance
 	{
-		readonly Dictionary<string, string> m_BundleNames = new Dictionary<string, string>();
-		readonly ReactiveProperty<LoadManifestStatus> m_LoadManifestStatus = new ReactiveProperty<LoadManifestStatus>(LoadManifestStatus.NotLoaded);
+		Dictionary<string, string> m_BundleNames;
+		ReactiveProperty<ManifestStatus> m_ManifestStatus;
+
+		void AwakeManifest()
+		{
+			m_BundleNames = new Dictionary<string, string>();
+			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
+		}
 
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; private set; }
 
-		IDisposable m_ManifestPending;
-		public IDisposable LoadManifest(string uri)
+
+		public IObservable<AssetBundleManifest> LoadManifest(string uri)
 		{
-			m_ManifestPending?.Dispose();
-			m_LoadManifestStatus.Value = LoadManifestStatus.Loading;
-			AssetBundle manifestBundle = null;
-			AssetBundleManifest newManifest = null;
-			bool disposed = false;
-			return m_ManifestPending = UnityWebRequest.GetAssetBundle(uri).ToAssetBundleObservable()
-				.ContinueWith(ab => (manifestBundle = ab).LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable())
-				.Select(req =>
+			return Observable.Defer(() =>
+			{
+				m_ManifestStatus.Value = ManifestStatus.Loading;
+				AssetBundle bundle = null;
+				AssetBundleManifest manifest = null;
+				return UnityWebRequest.GetAssetBundle(uri).ToAssetBundleObservable().ContinueWith(ab =>
 				{
-					newManifest = req.asset as AssetBundleManifest;
-					if (newManifest == null)
+					bundle = ab;
+					return ab.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable();
+				}).Select(req =>
+				{
+					manifest = req.asset as AssetBundleManifest;
+					if (manifest == null)
 						throw new Exception("AssetBundleManifest not found.");
-					return newManifest;
-				})
-				.DoOnCancel(() => disposed = true)
-				.Finally(() =>
+					return manifest;
+				}).Finally(() =>
 				{
-					manifestBundle?.Unload(false);
-					if (disposed) return;
-					if (newManifest == null)
+					if (bundle != null) bundle.Unload(false);
+					if (manifest != null)
 					{
-						Debug.LogError("Failed to load AssetBundleManifest.");
-						m_LoadManifestStatus.Value = LoadManifestStatus.NotLoaded;
+						RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
+						Debug.Log("AssetBundleManifest loaded.");
+						SetManifest(manifest);
 					}
 					else
 					{
-						Manifest = newManifest;
-						RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
-						MapBundleNames();
-						Debug.Log("AssetBundleManifest loaded.");
-						m_LoadManifestStatus.Value = LoadManifestStatus.Loaded;
+						Debug.LogError("Failed to load AssetBundleManifest.");
+						m_ManifestStatus.Value = ManifestStatus.NotLoaded;
 					}
-				})
-				.Subscribe();
+				});
+			});
 		}
 
 		public IObservable<Unit> WaitForManifestLoaded()
 		{
 			return Observable.Defer(() =>
 			{
-				if (Foo(m_LoadManifestStatus.Value))
-					return Observable.ReturnUnit();
-				return m_LoadManifestStatus.Where(Foo).Take(1).AsUnitObservable();
+				if (m_ManifestStatus.Value == ManifestStatus.Loaded) return Observable.ReturnUnit();
+				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded)
+				{
+				}
+				return m_ManifestStatus.FirstOrEmpty(s => s == ManifestStatus.Loaded).AsUnitObservable();
 			});
 		}
 
-		bool Foo(LoadManifestStatus status)
+		//bool Foo(ManifestStatus status)
+		//{
+		//	if (status == ManifestStatus.NotLoaded)
+		//		throw new Exception("No AssetBundleManifest loading or loaded.");
+		//	return status == ManifestStatus.Loaded;
+		//}
+
+		public void SetManifest(AssetBundleManifest manifest)
 		{
-			if (status == LoadManifestStatus.NotLoaded)
-				throw new Exception("No AssetBundleManifest loading or loaded.");
-			return status == LoadManifestStatus.Loaded;
+			if (manifest == null)
+				throw new ArgumentNullException(nameof(manifest));
+			Manifest = manifest;
+			MapBundleNames(manifest);
+			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
 
-		void MapBundleNames()
+		void MapBundleNames(AssetBundleManifest manifest)
 		{
 			m_BundleNames.Clear();
-			foreach (var item in Manifest.GetAllAssetBundles())
+			var all = manifest.GetAllAssetBundles();
+			for (int i = 0; i < all.Length; i++)
 			{
+				var item = all[i];
 				var name = item;
-				var suffix = "_" + Manifest.GetAssetBundleHash(item);
-				if (name.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-					name = name.Substring(0, name.Length - suffix.Length);
+				var hash = manifest.GetAssetBundleHash(name).ToString();
+				if (name.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
+					name = name.Substring(0, name.Length - hash.Length - 1);
 				m_BundleNames.Add(name, item);
 			}
 		}
 
-		enum LoadManifestStatus
+		enum ManifestStatus
 		{
 			NotLoaded,
 			Loading,
