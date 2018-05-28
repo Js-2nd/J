@@ -7,10 +7,8 @@
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public partial class AssetLoaderInstance
+	partial class AssetLoaderInstance
 	{
-		readonly Dictionary<BundleEntry, IObservable<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
-
 		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
@@ -26,19 +24,49 @@
 		{
 			return m_BundleCache.GetOrAdd(entry, e =>
 			{
-				return GetAssetBundleCore(e).Replay(Scheduler.MainThreadIgnoreTimeScale);
+				return GetAssetBundleCore(e); // TODO
 			});
 		}
 
 		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry)
 		{
+			AssetBundle entryBundle = null;
 			return WaitForManifestLoaded()
-				.ContinueWith(_ => entry.BundleName.ToSingleEnumerable()
+				.ContinueWith(_ =>
+				{
+					Manifest.GetAllDependencies(entry.BundleName)
+						.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
+						.Merge(4);
+					return GetAssetBundle(entry).Do(bundle => entryBundle = bundle);
+				});
 					.Concat(Manifest.GetAllDependencies(entry.BundleName))
-					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
+					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)).AsUnitObservable())
 					.WhenAll())
-				.SelectMany(bundles => bundles.Take(1))
-				.Share();
+				.SelectMany(bundles => bundles.Take(1));
+		}
+
+		public IObservable<Unit> GetAssetBundleWithProgress(IEnumerable<string> bundleNames, DividableProgress progress)
+		{
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				var set = new HashSet<string>();
+				foreach (var name in bundleNames)
+				{
+					var entry = new BundleEntry(name);
+					set.Add(entry.BundleName);
+					var dep = Manifest.GetAllDependencies(entry.BundleName);
+					for (int i = 0; i < dep.Length; i++)
+						set.Add(dep[i]);
+				}
+				var list = new TaskList();
+				foreach (var name in set)
+					list.AddObservable(GetAssetBundle(new BundleEntry(name)));
+				return GetAssetBundle(entry).Do(bundle => entryBundle = bundle);
+			});
+					.Concat(Manifest.GetAllDependencies(entry.BundleName))
+					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)).AsUnitObservable())
+					.WhenAll())
+				.SelectMany(bundles => bundles.Take(1));
 		}
 	}
 }
