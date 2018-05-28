@@ -1,5 +1,8 @@
 ﻿namespace J
 {
+	using System;
+	using System.Collections.Generic;
+	using UniRx;
 	using UnityEngine;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
@@ -17,7 +20,7 @@
 
 		public bool SimulationMode => Application.isEditor && m_SimulationMode != Simulation.Disable && AssetGraphLoader.IsValid;
 		public string AutoLoadManifestUri =>
-#if UNITY_STANDALONE
+#if UNITY_EDITOR
 			EDITOR_URI
 #elif UNITY_ANDROID
 			ANDROID_URI
@@ -34,14 +37,27 @@
 			AutoLoadManifest = true;
 		}
 
+		ReactiveProperty<ManifestStatus> m_ManifestStatus;
+		Dictionary<string, string> m_BundleNames;
+		Dictionary<BundleEntry, IObservable<AssetBundle>> m_BundleCache;
+
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
-			AwakeManifest();
+			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
+			m_BundleNames = new Dictionary<string, string>();
+			m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
+
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
 			if (!SimulationMode && AutoLoadManifest && !string.IsNullOrWhiteSpace(AutoLoadManifestUri))
 				LoadManifest(AutoLoadManifestUri);
+		}
+
+		protected override void SingletonOnDestroy()
+		{
+			m_ManifestStatus.Dispose();
+			base.SingletonOnDestroy();
 		}
 	}
 }

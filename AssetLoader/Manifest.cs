@@ -1,27 +1,12 @@
 ﻿namespace J
 {
 	using System;
-	using System.Collections.Generic;
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
 
 	partial class AssetLoaderInstance
 	{
-		ReactiveProperty<ManifestStatus> m_ManifestStatus;
-		Dictionary<string, string> m_BundleNames;
-
-		void AwakeManifest()
-		{
-			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
-			m_BundleNames = new Dictionary<string, string>();
-		}
-
-		void OnDestroyManifest()
-		{
-			m_ManifestStatus.Dispose();
-		}
-
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; set; }
 
