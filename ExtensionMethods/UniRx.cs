@@ -1,6 +1,8 @@
 ﻿namespace UniRx
 {
+	using J;
 	using System;
+	using System.Collections.Generic;
 
 	public static partial class ExtensionMethods
 	{
@@ -20,6 +22,14 @@
 		public static void OnNext<T>(this Subject<T> subject, Func<T> factory)
 		{
 			if (subject.HasObservers) subject.OnNext(factory());
+		}
+
+		public static TaskList ToTaskList(this IEnumerable<IObservable<Unit>> sources)
+		{
+			var list = new TaskList();
+			foreach (var source in sources)
+				list.AddObservable(source);
+			return list;
 		}
 	}
 }
