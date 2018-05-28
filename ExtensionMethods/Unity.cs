@@ -14,10 +14,10 @@
 					throw new Exception(string.Format("{0} {1}", request.error, request.url));
 				if (request.isHttpError)
 					throw new Exception(string.Format("HTTP{0} {1}", request.responseCode, request.url));
-				var ab = DownloadHandlerAssetBundle.GetContent(request);
-				if (ab == null)
+				var bundle = DownloadHandlerAssetBundle.GetContent(request);
+				if (bundle == null)
 					throw new Exception("Invalid AssetBundle. " + request.url);
-				return ab;
+				return bundle;
 			}).Finally(() => request.Dispose()));
 		}
 	}
