@@ -31,5 +31,13 @@
 				list.AddObservable(source);
 			return list;
 		}
+
+		public static TaskQueue ToTaskQueue<T>(this IEnumerable<IObservable<T>> sources)
+		{
+			var queue = new TaskQueue();
+			foreach (var source in sources)
+				queue.AddObservable(source);
+			return queue;
+		}
 	}
 }

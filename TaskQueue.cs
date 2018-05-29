@@ -6,24 +6,19 @@ namespace J
 {
 	using J.Internal;
 	using System.Collections;
-	using System.Linq;
 	using TaskFunc = Func<DividableProgress, IObservable<Unit>>;
 	using TaskWeightPair = KeyValuePair<Func<DividableProgress, IObservable<Unit>>, Func<float>>;
 	using WeightFunc = Func<float>;
 
 	public sealed class TaskQueue
 	{
-		public static int DefaultMaxConcurrent = 4;
-
-		readonly Queue<TaskWeightPair> queue = new Queue<TaskWeightPair>();
-
-		public int MaxConcurrent { get; set; } = DefaultMaxConcurrent;
+		readonly Queue<IObservable<TaskWeightPair>> queue = new Queue<IObservable<TaskWeightPair>>();
 
 		public int Count => queue.Count;
 
 		public void Clear() => queue.Clear();
 
-		public void Add(TaskFunc taskFunc, WeightFunc weightFunc = null) => queue.Enqueue(new TaskWeightPair(taskFunc, weightFunc));
+		public void Add(TaskFunc taskFunc, WeightFunc weightFunc = null) => queue.Enqueue(Observable.Return(new TaskWeightPair(taskFunc, weightFunc)));
 
 		public void AddObservable(IObservable<Unit> observable, WeightFunc weightFunc = null)
 		{
@@ -78,36 +73,48 @@ namespace J
 		public void AddTaskQueue(TaskQueue taskQueue, WeightFunc weightFunc = null)
 		{
 			if (taskQueue == null) return;
-			var weight = weightFunc == null ? (WeightFunc)taskQueue.GetWeight : () => taskQueue.GetWeight() * weightFunc();
-			Add(taskQueue.ToObservable, weight);
+			var pairs = taskQueue.GetPairs();
+			if (weightFunc != null)
+			{
+				float weight = 1;
+				pairs = pairs.DoOnSubscribe(() => weight = weightFunc())
+					.Select(pair => new TaskWeightPair(pair.Key, () => pair.Weight() * weight));
+			}
+			queue.Enqueue(pairs);
 		}
 
-		public IObservable<Unit> ToObservable(IProgress<float> progress = null)
+		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 4)
 		{
 			return Observable.Defer(() =>
 			{
 				var dividableProgress = progress.ToDividableProgress();
 				if (dividableProgress == null)
-					return queue.Select(pair => pair.Key(null))
-						.Merge(MaxConcurrent).AsSingleUnitObservable();
-				float total = GetWeight();
-				return queue.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)))
-					.Merge(MaxConcurrent).AsSingleUnitObservable()
+					return GetPairs().Select(pair => pair.Key(null))
+						.Merge(maxConcurrent).AsSingleUnitObservable();
+				return GetWeight().ContinueWith(total => GetPairs()
+					.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)))
+					.Merge(maxConcurrent).AsSingleUnitObservable()
 					.ReportOnCompleted(dividableProgress)
-					.Finally(() => lazyWeight = -1);
+					.Finally(() => weightCache = null));
 			});
 		}
 
-		float lazyWeight = -1;
-		float GetWeight()
+		IObservable<TaskWeightPair> GetPairs() => queue.Merge();
+
+		AsyncSubject<float> weightCache;
+		IObservable<float> GetWeight()
 		{
-			if (lazyWeight < 0)
+			return Observable.Defer(() =>
 			{
-				lazyWeight = 0;
-				foreach (var pair in queue)
-					lazyWeight += pair.Weight();
-			}
-			return lazyWeight;
+				if (weightCache == null)
+				{
+					weightCache = new AsyncSubject<float>();
+					GetPairs().Aggregate(0f, (sum, pair) => sum + pair.Weight())
+						.DoOnError(ex => weightCache = null)
+						.Subscribe(weightCache);
+				}
+				return weightCache;
+			});
 		}
 	}
 
