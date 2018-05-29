@@ -24,7 +24,7 @@
 			if (subject.HasObservers) subject.OnNext(factory());
 		}
 
-		public static TaskList ToTaskList(this IEnumerable<IObservable<Unit>> sources)
+		public static TaskList ToTaskList<T>(this IEnumerable<IObservable<T>> sources)
 		{
 			var list = new TaskList();
 			foreach (var source in sources)
