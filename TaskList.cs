@@ -7,13 +7,14 @@
 	using System.Linq;
 	using UniRx;
 
-	public class TaskList
+	public sealed class TaskList
 	{
 		public static int DefaultMaxConcurrent = 4;
 
-		readonly List<Func<DividableProgress, IObservable<Unit>>> list = new List<Func<DividableProgress, IObservable<Unit>>>();
-
 		public int MaxConcurrent { get; set; } = DefaultMaxConcurrent;
+		public TaskList SetMaxConcurrent(int value) { MaxConcurrent = value; return this; }
+
+		readonly List<Func<DividableProgress, IObservable<Unit>>> list = new List<Func<DividableProgress, IObservable<Unit>>>();
 
 		public int Count => list.Count;
 
