@@ -21,59 +21,55 @@
 
 		public TaskList AddObservable(IObservable<Unit> observable)
 		{
-			if (observable != null)
-				list.Add(progress => observable.ReportOnCompleted(progress));
+			if (observable != null) list.Add(progress => observable.ReportOnCompleted(progress));
 			return this;
 		}
 		public TaskList AddObservable<T>(IObservable<T> observable)
 		{
 			if (observable != null)
+			{
+				var unitObservable = observable as IObservable<Unit>;
+				if (unitObservable != null) return AddObservable(unitObservable);
 				list.Add(progress => observable.AsUnitObservable().ReportOnCompleted(progress));
+			}
 			return this;
 		}
 
 		public TaskList AddCoroutine(Func<DividableProgress, IEnumerator> coroutine)
 		{
-			if (coroutine != null)
-				list.Add(progress => coroutine(progress).ToObservable().ReportOnCompleted(progress));
+			if (coroutine != null) list.Add(progress => coroutine(progress).ToObservable().ReportOnCompleted(progress));
 			return this;
 		}
 		public TaskList AddCoroutine<T1>(Func<T1, DividableProgress, IEnumerator> coroutine, T1 arg1)
 		{
-			if (coroutine != null)
-				list.Add(progress => coroutine(arg1, progress).ToObservable().ReportOnCompleted(progress));
+			if (coroutine != null) list.Add(progress => coroutine(arg1, progress).ToObservable().ReportOnCompleted(progress));
 			return this;
 		}
 		public TaskList AddCoroutine<T1, T2>(Func<T1, T2, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2)
 		{
-			if (coroutine != null)
-				list.Add(progress => coroutine(arg1, arg2, progress).ToObservable().ReportOnCompleted(progress));
+			if (coroutine != null) list.Add(progress => coroutine(arg1, arg2, progress).ToObservable().ReportOnCompleted(progress));
 			return this;
 		}
 		public TaskList AddCoroutine<T1, T2, T3>(Func<T1, T2, T3, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3)
 		{
-			if (coroutine != null)
-				list.Add(progress => coroutine(arg1, arg2, arg3, progress).ToObservable().ReportOnCompleted(progress));
+			if (coroutine != null) list.Add(progress => coroutine(arg1, arg2, arg3, progress).ToObservable().ReportOnCompleted(progress));
 			return this;
 		}
 		public TaskList AddCoroutine<T1, T2, T3, T4>(Func<T1, T2, T3, T4, DividableProgress, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3, T4 arg4)
 		{
-			if (coroutine != null)
-				list.Add(progress => coroutine(arg1, arg2, arg3, arg4, progress).ToObservable().ReportOnCompleted(progress));
+			if (coroutine != null) list.Add(progress => coroutine(arg1, arg2, arg3, arg4, progress).ToObservable().ReportOnCompleted(progress));
 			return this;
 		}
 
 		public TaskList AddTaskList(TaskList taskList)
 		{
-			if (taskList != null)
-				list.Add(taskList.ToObservable);
+			if (taskList != null) list.Add(taskList.ToObservable);
 			return this;
 		}
 
 		public TaskList MergeTaskList(TaskList taskList)
 		{
-			if (taskList != null)
-				list.AddRange(taskList.list);
+			if (taskList != null) list.AddRange(taskList.list);
 			return this;
 		}
 
