@@ -22,9 +22,16 @@
 
 		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
 		{
-			return m_BundleCache.GetOrAdd(entry, e =>
+			return Observable.Defer(() =>
 			{
-				return GetAssetBundleCore(e); // TODO
+				IObservable<AssetBundle> cache;
+				if (m_BundleCache.TryGetValue(entry, out cache)) return cache;
+				var subject = new AsyncSubject<AssetBundle>();
+				m_BundleCache.Add(entry, subject);
+				GetAssetBundleCore(entry)
+					.DoOnError(ex => m_BundleCache.Remove(entry))
+					.Subscribe(subject);
+				return subject;
 			});
 		}
 
