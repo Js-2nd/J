@@ -50,7 +50,7 @@
 			});
 		}
 
-		public IObservable<Unit> CreateBundleTaskList(IEnumerable<string> bundleNames, DividableProgress progress = null, int maxConcurrent = 4)
+		public IObservable<Unit> DownloadAssetBundleProgress(IEnumerable<string> bundleNames, IProgress<float> progress = null, int maxConcurrent = 4)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
