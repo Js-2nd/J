@@ -9,7 +9,11 @@
 
 	public class TaskList
 	{
+		public static int DefaultMaxConcurrent = 4;
+
 		readonly List<Func<DividableProgress, IObservable<Unit>>> list = new List<Func<DividableProgress, IObservable<Unit>>>();
+
+		public int MaxConcurrent { get; set; } = DefaultMaxConcurrent;
 
 		public int Count => list.Count;
 
@@ -62,7 +66,7 @@
 		public TaskList AddTaskList(TaskList taskList)
 		{
 			if (taskList != null)
-				list.Add(taskList.WhenAll);
+				list.Add(taskList.ToObservable);
 			return this;
 		}
 
@@ -73,10 +77,12 @@
 			return this;
 		}
 
-		public IObservable<Unit> WhenAll(DividableProgress progress = null)
+		public IObservable<Unit> ToObservable(DividableProgress progress = null)
 		{
 			return list.Select(task => task(Count == 1 ? progress : progress?.Divide(1f / Count)))
-				.WhenAll().ReportOnCompleted(progress);
+				.Merge(MaxConcurrent)
+				.AsSingleUnitObservable()
+				.ReportOnCompleted(progress);
 		}
 	}
 
