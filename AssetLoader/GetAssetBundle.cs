@@ -9,14 +9,19 @@
 
 	partial class AssetLoaderInstance
 	{
-		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry)
+		IObservable<string> GetAssetBundleUri(string bundleName)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
+			return WaitForManifestLoaded().Select(_ => RootUri + m_BundleNames.GetOrDefault(bundleName, bundleName));
+		}
+
+		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry, IProgress<float> progress = null)
+		{
+			return WaitForManifestLoaded().ContinueWith(_ => GetAssetBundleUri(entry.BundleName)).ContinueWith(_ =>
 			{
 				var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
 				var uri = RootUri + name;
 				var hash = Manifest.GetAssetBundleHash(name);
-				return UnityWebRequest.GetAssetBundle(uri, hash, 0).ToAssetBundleObservable();
+				return UnityWebRequest.GetAssetBundle(uri, hash, 0).ToAssetBundleObservable(progress);
 			});
 		}
 
