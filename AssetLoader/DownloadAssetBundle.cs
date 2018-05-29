@@ -9,7 +9,7 @@
 
 	partial class AssetLoaderInstance
 	{
-		public IObservable<AssetBundleDownloader> Download(IEnumerable<string> bundleNames, IProgress<float> progress = null, bool includeDependencies = true)
+		public IObservable<Unit> Download(IEnumerable<string> bundleNames, IProgress<float> progress = null, bool includeDependencies = true)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
@@ -23,9 +23,9 @@
 					for (int i = 0; i < dep.Length; i++)
 						set.Add(dep[i]);
 				}
-				set.Where(bundleName => !Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName)))
+				return set.Where(bundleName => !Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName)))
 					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
-					.ToTaskList();
+					.ToTaskQueue().ToObservable(progress);
 			});
 		}
 
