@@ -7,10 +7,14 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
+		public delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
+		public delegate IObservable<UnityEngine.Object> LoadDelegate(AssetEntry entry);
+
 		static readonly char[] Delimiters = { '/', '\\' };
 
 		[SerializeField] bool m_DontDestroyOnLoad = true;
-		[SerializeField] Simulation m_SimulationMode = Simulation.AssetDatabase;
+		public Simulation SimulationMode = Simulation.AssetDatabase;
+		public bool UnloadAssetsOnDestroy;
 		public bool AutoLoadManifest = true;
 
 		public string EDITOR_URI;
@@ -18,18 +22,36 @@
 		public string ANDROID_URI;
 		public string IOS_URI;
 
-		public bool SimulationMode => Application.isEditor && m_SimulationMode != Simulation.Disable && AssetGraphLoader.IsValid;
-		public string AutoLoadManifestUri =>
+		public string CurrentManifestUri
+		{
+			get
+			{
+				return
 #if UNITY_EDITOR
-			EDITOR_URI
+					EDITOR_URI
 #elif UNITY_ANDROID
-			ANDROID_URI
+					ANDROID_URI
 #elif UNITY_IOS
-			IOS_URI
+					IOS_URI
 #else
-			STANDALONE_URI
+					STANDALONE_URI
 #endif
-			;
+					;
+			}
+			set
+			{
+#if UNITY_EDITOR
+				EDITOR_URI
+#elif UNITY_ANDROID
+				ANDROID_URI
+#elif UNITY_IOS
+				IOS_URI
+#else
+				STANDALONE_URI
+#endif
+					= value;
+			}
+		}
 
 		void Reset()
 		{
@@ -47,17 +69,37 @@
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
 			m_BundleNames = new Dictionary<string, string>();
 			m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
+			UpdateLoadMethod();
 
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
-			if (!SimulationMode && AutoLoadManifest && !string.IsNullOrWhiteSpace(AutoLoadManifestUri))
-				LoadManifest(AutoLoadManifestUri);
+			if (!IsSimulationEnabled && AutoLoadManifest && !string.IsNullOrWhiteSpace(CurrentManifestUri))
+				LoadManifest(CurrentManifestUri).Subscribe();
+		}
+
+		void OnValidate()
+		{
+			if (Application.isPlaying) UpdateLoadMethod();
 		}
 
 		protected override void SingletonOnDestroy()
 		{
 			m_ManifestStatus.Dispose();
+			foreach (var cache in m_BundleCache.Values)
+				cache.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
 			base.SingletonOnDestroy();
+		}
+	}
+
+	public static partial class AssetLoader
+	{
+		public static AssetLoaderInstance Instance => AssetLoaderInstance.Instance;
+
+
+		public static bool AutoLoadManifest
+		{
+			get { return Instance.AutoLoadManifest; }
+			set { Instance.AutoLoadManifest = value; }
 		}
 	}
 }

@@ -2,10 +2,12 @@
 {
 	using System;
 	using UniRx;
+	using static AssetLoaderInstance;
+	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
 	{
-		IObservable<UnityEngine.Object> LoadCore(AssetEntry entry)
+		IObservable<Object> LoadCore(AssetEntry entry)
 		{
 			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(bundle =>
 			{
@@ -59,5 +61,24 @@
 			AssetDatabase = 1,
 			AssetGraph = 2,
 		}
+	}
+
+	partial class AssetLoader
+	{
+		public static bool IsSimulationEnabled => Instance.IsSimulationEnabled;
+
+		public static IObservable<Object> Load(string bundleName, string assetName = null, Type assetType = null) =>
+			Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Single));
+		public static IObservable<Object> Load(string bundleName, Type assetType) =>
+			Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Single));
+		public static IObservable<T> Load<T>(string bundleName, string assetName = null) where T : Object =>
+			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Single)).Select(obj => obj as T);
+
+		public static IObservable<Object> LoadMulti(string bundleName, string assetName = null, Type assetType = null) =>
+			Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Multi));
+		public static IObservable<Object> LoadMulti(string bundleName, Type assetType) =>
+			Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Multi));
+		public static IObservable<T> LoadMulti<T>(string bundleName, string assetName = null) where T : Object =>
+			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Multi)).Select(obj => obj as T);
 	}
 }

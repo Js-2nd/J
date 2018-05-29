@@ -101,4 +101,17 @@
 			Loaded,
 		}
 	}
+
+	partial class AssetLoader
+	{
+		public static string CurrentManifestUri => Instance.CurrentManifestUri;
+
+		public static AssetBundleManifest Manifest => Instance.Manifest;
+
+		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
+
+		public static IObservable<AssetBundleManifest> LoadManifest(string uri, bool? setRoot = null) => Instance.LoadManifest(uri, setRoot);
+
+		public static IObservable<Unit> WaitForManifestLoaded() => Instance.WaitForManifestLoaded();
+	}
 }
