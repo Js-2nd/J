@@ -74,12 +74,30 @@
 			return this;
 		}
 
-		public IObservable<Unit> ToObservable(DividableProgress progress = null)
+		public IObservable<Unit> ToObservable(IProgress<float> progress = null)
 		{
-			return list.Select(task => task(Count == 1 ? progress : progress?.Divide(1f / Count)))
-				.Merge(MaxConcurrent)
-				.AsSingleUnitObservable()
-				.ReportOnCompleted(progress);
+			return Observable.Defer(() =>
+			{
+				var dividableProgress = progress as DividableProgress;
+				if (dividableProgress == null && progress != null)
+				{
+					dividableProgress = new DividableProgress();
+					dividableProgress.Subscribe(progress.Report);
+				}
+				Func<Func<DividableProgress, IObservable<Unit>>, IObservable<Unit>> selector;
+				if (Count > 1)
+				{
+					float weight = 1f / Count;
+					selector = task => task(dividableProgress?.Divide(weight));
+				}
+				else
+				{
+					selector = task => task(dividableProgress);
+				}
+				return list.Select(selector)
+					.Merge(MaxConcurrent).AsSingleUnitObservable()
+					.ReportOnCompleted(dividableProgress);
+			});
 		}
 	}
 
