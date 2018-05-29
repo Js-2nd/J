@@ -12,11 +12,10 @@
 
 		static readonly char[] Delimiters = { '/', '\\' };
 
-		[SerializeField] bool m_DontDestroyOnLoad = true;
-		public Simulation SimulationMode = Simulation.AssetDatabase;
+		public Simulation SimulationMode;
+		[SerializeField] bool m_DontDestroyOnLoad;
 		public bool UnloadAssetsOnDestroy;
-		public bool AutoLoadManifest = true;
-
+		public bool AutoLoadManifest;
 		public string EDITOR_URI;
 		public string STANDALONE_URI;
 		public string ANDROID_URI;
@@ -70,11 +69,10 @@
 			m_BundleNames = new Dictionary<string, string>();
 			m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
 			UpdateLoadMethod();
-
 			if (m_DontDestroyOnLoad)
 				DontDestroyOnLoad(gameObject);
-			if (!IsSimulationEnabled && AutoLoadManifest && !string.IsNullOrWhiteSpace(CurrentManifestUri))
-				LoadManifest(CurrentManifestUri).Subscribe();
+			if (AutoLoadManifest && !string.IsNullOrWhiteSpace(CurrentManifestUri))
+				LoadManifest(CurrentManifestUri).CatchIgnore((Exception ex) => Debug.LogError(ex)).Subscribe();
 		}
 
 		void OnValidate()
@@ -95,11 +93,22 @@
 	{
 		public static AssetLoaderInstance Instance => AssetLoaderInstance.Instance;
 
-
 		public static bool AutoLoadManifest
 		{
 			get { return Instance.AutoLoadManifest; }
 			set { Instance.AutoLoadManifest = value; }
+		}
+
+		public static bool UnloadAssetsOnDestroy
+		{
+			get { return Instance.UnloadAssetsOnDestroy; }
+			set { Instance.UnloadAssetsOnDestroy = value; }
+		}
+
+		public static string CurrentManifestUri
+		{
+			get { return Instance.CurrentManifestUri; }
+			set { Instance.CurrentManifestUri = value; }
 		}
 	}
 }

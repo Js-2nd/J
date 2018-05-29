@@ -6,21 +6,17 @@
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
+	using static J.AssetLoaderInstance;
 
 	partial class AssetLoaderInstance
 	{
-		IObservable<string> GetAssetBundleUri(string bundleName)
-		{
-			return WaitForManifestLoaded().Select(_ => RootUri + m_BundleNames.GetOrDefault(bundleName, bundleName));
-		}
-
 		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry, IProgress<float> progress = null)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ => GetAssetBundleUri(entry.BundleName)).ContinueWith(_ =>
+			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
-				var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
-				var uri = RootUri + name;
-				var hash = Manifest.GetAssetBundleHash(name);
+				var bundleName = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
+				var uri = RootUri + bundleName;
+				var hash = Manifest.GetAssetBundleHash(bundleName);
 				return UnityWebRequest.GetAssetBundle(uri, hash, 0).ToAssetBundleObservable(progress);
 			});
 		}
@@ -54,5 +50,14 @@
 					.Select(__ => entryBundle);
 			});
 		}
+	}
+
+	partial class AssetLoader
+	{
+		public static IObservable<AssetBundle> GetAssetBundle(string bundleName) =>
+			Instance.GetAssetBundle(new BundleEntry(bundleName));
+
+		public static IObservable<AssetBundle> GetAssetBundleWithDependencies(string bundleName) =>
+			Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
 	}
 }
