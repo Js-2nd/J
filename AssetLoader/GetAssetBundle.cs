@@ -35,45 +35,37 @@
 			});
 		}
 
-		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry)
+		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 4)
 		{
-			AssetBundle entryBundle = null;
-			return WaitForManifestLoaded()
-				.ContinueWith(_ =>
-				{
-					Manifest.GetAllDependencies(entry.BundleName)
-						.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
-						.Merge(4);
-					return GetAssetBundle(entry).Do(bundle => entryBundle = bundle);
-				});
-					.Concat(Manifest.GetAllDependencies(entry.BundleName))
-					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)).AsUnitObservable())
-					.WhenAll())
-				.SelectMany(bundles => bundles.Take(1));
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				AssetBundle entryBundle = null;
+				var dep = Manifest.GetAllDependencies(entry.BundleName)
+					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)));
+				return GetAssetBundle(entry)
+					.Do(bundle => entryBundle = bundle)
+					.ToSingleEnumerable().Concat(dep)
+					.Merge(maxConcurrent).AsSingleUnitObservable()
+					.Select(__ => entryBundle);
+			});
 		}
 
-		public IObservable<Unit> GetAssetBundleWithProgress(IEnumerable<string> bundleNames, DividableProgress progress)
+		public IObservable<Unit> CreateBundleTaskList(IEnumerable<string> bundleNames, DividableProgress progress = null, int maxConcurrent = 4)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				var set = new HashSet<string>();
-				foreach (var name in bundleNames)
+				foreach (var item in bundleNames)
 				{
-					var entry = new BundleEntry(name);
-					set.Add(entry.BundleName);
-					var dep = Manifest.GetAllDependencies(entry.BundleName);
+					var bundleName = new BundleEntry(item).BundleName;
+					set.Add(bundleName);
+					var dep = Manifest.GetAllDependencies(bundleName);
 					for (int i = 0; i < dep.Length; i++)
 						set.Add(dep[i]);
 				}
-				var list = new TaskList();
-				foreach (var name in set)
-					list.AddObservable(GetAssetBundle(new BundleEntry(name)));
-				return GetAssetBundle(entry).Do(bundle => entryBundle = bundle);
+				return set.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
+					.ToTaskList().SetMaxConcurrent(maxConcurrent).ToObservable(progress);
 			});
-					.Concat(Manifest.GetAllDependencies(entry.BundleName))
-					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)).AsUnitObservable())
-					.WhenAll())
-				.SelectMany(bundles => bundles.Take(1));
 		}
 	}
 }
