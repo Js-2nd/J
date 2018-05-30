@@ -30,7 +30,7 @@ namespace J
 			if (getAssetPaths == null) throw new ArgumentNullException(nameof(getAssetPaths));
 			return entry =>
 			{
-				var path = getAssetPaths(entry.BundleName, entry.AssetName)?.FirstOrDefault();
+				string path = getAssetPaths(entry.NormedBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
 					return Observable.Throw<UnityEngine.Object>(new Exception("Asset not found. " + entry), Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)

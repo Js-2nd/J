@@ -51,23 +51,32 @@
 		{
 			if (manifest == null) throw new ArgumentNullException(nameof(manifest));
 			Manifest = manifest;
-			MapBundleNames(manifest);
+			MapBundleNames();
 			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
 
-		void MapBundleNames(AssetBundleManifest manifest)
+		void MapBundleNames()
 		{
 			m_BundleNames.Clear();
-			var all = manifest.GetAllAssetBundles();
+			var all = Manifest.GetAllAssetBundles();
 			for (int i = 0; i < all.Length; i++)
 			{
-				var item = all[i];
-				var name = item;
-				var hash = manifest.GetAssetBundleHash(name).ToString();
-				if (name.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
-					name = name.Substring(0, name.Length - hash.Length - 1);
-				m_BundleNames.Add(name, item);
+				string bundleName = all[i], trim;
+				if (TrimHash(bundleName, out trim))
+					m_BundleNames.Add(trim, bundleName);
 			}
+		}
+
+		bool TrimHash(string bundleName, out string trim)
+		{
+			string hash = Manifest.GetAssetBundleHash(bundleName).ToString();
+			if (bundleName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
+			{
+				trim = bundleName.Substring(0, bundleName.Length - hash.Length - 1);
+				return true;
+			}
+			trim = bundleName;
+			return false;
 		}
 
 		public void UnloadManifest()

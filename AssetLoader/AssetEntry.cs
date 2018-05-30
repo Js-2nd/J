@@ -4,27 +4,33 @@
 
 	partial class AssetLoaderInstance
 	{
-		public sealed class AssetEntry
+		public static string DefaultAssetName(string normedBundleName)
 		{
-			public BundleEntry BundleEntry { get; }
-			public string BundleName => BundleEntry.BundleName;
-			public string AssetName { get; }
-			public Type AssetType { get; }
-			public LoadMethod LoadMethod { get; }
-
-			public AssetEntry(string bundleName, string assetName = null, Type assetType = null, LoadMethod? loadMethod = null)
-			{
-				BundleEntry = new BundleEntry(bundleName);
-				AssetName = assetName != null ? assetName.ToLower() : BundleName.Substring(BundleName.LastIndexOfAny(Delimiters) + 1);
-				AssetType = assetType ?? typeof(UnityEngine.Object);
-				LoadMethod = loadMethod ?? LoadMethod.Single;
-			}
+			int index = normedBundleName.LastIndexOfAny(Delimiters) + 1;
+			return normedBundleName.Substring(index);
 		}
+	}
 
-		public enum LoadMethod
+	public sealed class AssetEntry
+	{
+		public BundleEntry BundleEntry { get; }
+		public string NormedBundleName => BundleEntry.NormedBundleName;
+		public string AssetName { get; }
+		public Type AssetType { get; }
+		public LoadMethod LoadMethod { get; }
+
+		public AssetEntry(string bundleName, string assetName = null, Type assetType = null, LoadMethod? loadMethod = null)
 		{
-			Single,
-			Multi,
+			BundleEntry = new BundleEntry(bundleName);
+			AssetName = assetName ?? AssetLoaderInstance.DefaultAssetName(NormedBundleName);
+			AssetType = assetType ?? typeof(UnityEngine.Object);
+			LoadMethod = loadMethod ?? LoadMethod.Single;
 		}
+	}
+
+	public enum LoadMethod
+	{
+		Single = 0,
+		Multi = 1,
 	}
 }
