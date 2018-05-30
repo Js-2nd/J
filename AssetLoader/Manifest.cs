@@ -118,8 +118,10 @@
 
 		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
 
-		public static IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) => Instance.LoadManifest(uri, setRootUri);
-		public static IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null) => Instance.LoadManifest(request, setRootUri);
+		public static IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) =>
+			Instance.LoadManifest(uri, setRootUri);
+		public static IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null) =>
+			Instance.LoadManifest(request, setRootUri);
 
 		public static void SetManifest(AssetBundleManifest manifest) => Instance.SetManifest(manifest);
 

@@ -9,7 +9,7 @@
 	{
 		static readonly char[] Delimiters = { '/', '\\' };
 
-		public Simulation SimulationMode;
+		public AssetSimulation SimulationMode;
 		[SerializeField] bool m_DontDestroyOnLoad;
 		public bool UnloadAssetsOnDestroy;
 		public bool AutoLoadManifest;

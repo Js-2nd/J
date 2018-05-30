@@ -1,8 +1,8 @@
 ﻿namespace J
 {
+	using J.Internal;
 	using System;
 	using UniRx;
-	using static AssetLoaderInstance;
 	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
@@ -25,7 +25,7 @@
 			});
 		}
 
-		public LoadDelegate Load { get; private set; }
+		public LoadAssetDelegate Load { get; private set; }
 
 		void UpdateLoadMethod()
 		{
@@ -33,9 +33,9 @@
 			{
 				switch (SimulationMode)
 				{
-					case Simulation.AssetDatabase:
+					case AssetSimulation.AssetDatabase:
 						Load = AssetDatabaseLoader.Load; return;
-					case Simulation.AssetGraph:
+					case AssetSimulation.AssetGraph:
 						Load = AssetGraphLoader.Load; return;
 				}
 			}
@@ -48,19 +48,20 @@
 			{
 				switch (SimulationMode)
 				{
-					case Simulation.AssetDatabase: return AssetDatabaseLoader.IsAvailable;
-					case Simulation.AssetGraph: return AssetGraphLoader.IsAvailable;
+					case AssetSimulation.AssetDatabase: return AssetDatabaseLoader.IsAvailable;
+					case AssetSimulation.AssetGraph: return AssetGraphLoader.IsAvailable;
 					default: return false;
 				}
 			}
 		}
 
-		public enum Simulation
-		{
-			Disable = 0,
-			AssetDatabase = 1,
-			AssetGraph = 2,
-		}
+	}
+
+	public enum AssetSimulation
+	{
+		Disable = 0,
+		AssetDatabase = 1,
+		AssetGraph = 2,
 	}
 
 	partial class AssetLoader
