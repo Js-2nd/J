@@ -10,8 +10,15 @@
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; set; }
 
-		public IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) =>
-			LoadManifest(UnityWebRequest.GetAssetBundle(uri ?? PresetManifestUri));
+		public IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null)
+		{
+			if (string.IsNullOrEmpty(uri))
+			{
+				uri = PresetManifestUri;
+				if (string.IsNullOrEmpty(uri)) uri = "/";
+			}
+			return LoadManifest(UnityWebRequest.GetAssetBundle(uri));
+		}
 		public IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null)
 		{
 			return Observable.Defer(() =>
