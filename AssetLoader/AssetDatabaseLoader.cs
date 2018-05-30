@@ -4,16 +4,16 @@ using UnityEditor;
 
 namespace J
 {
+	using J.Internal;
 	using System;
 	using System.Linq;
 	using UniRx;
-	using static AssetLoaderInstance;
 
 	public static class AssetDatabaseLoader
 	{
 		public static readonly bool IsAvailable;
 		public static readonly GetAssetPathsDelegate GetAssetPaths;
-		public static readonly LoadDelegate Load;
+		public static readonly LoadAssetDelegate Load;
 
 		static AssetDatabaseLoader()
 		{
@@ -24,13 +24,13 @@ namespace J
 #endif
 		}
 
-		public static LoadDelegate ToLoadMethod(GetAssetPathsDelegate getAssetPaths)
+		public static LoadAssetDelegate ToLoadMethod(GetAssetPathsDelegate getAssetPaths)
 		{
 #if UNITY_EDITOR
 			if (getAssetPaths == null) throw new ArgumentNullException(nameof(getAssetPaths));
 			return entry =>
 			{
-				string path = getAssetPaths(entry.NormedBundleName, entry.AssetName)?.FirstOrDefault();
+				string path = getAssetPaths(entry.NormBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
 					return Observable.Throw<UnityEngine.Object>(new Exception("Asset not found. " + entry), Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)

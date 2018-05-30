@@ -10,7 +10,9 @@
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; set; }
 
-		public IObservable<AssetBundleManifest> LoadManifest(string uri, bool? setRoot = null)
+		public IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) =>
+			LoadManifest(UnityWebRequest.GetAssetBundle(uri ?? PresetManifestUri));
+		public IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null)
 		{
 			return Observable.Defer(() =>
 			{
@@ -18,13 +20,14 @@
 				AssetBundle manifestBundle = null;
 				AssetBundleManifest manifest = null;
 				bool cancel = false;
-				return UnityWebRequest.GetAssetBundle(uri).ToAssetBundleObservable().ContinueWith(bundle =>
+				string uri = request.url;
+				return request.SendAsObservable().ToAssetBundle().ContinueWith(bundle =>
 				{
 					manifestBundle = bundle;
 					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable();
-				}).Select(req =>
+				}).Select(bundleRequest =>
 				{
-					manifest = req.asset as AssetBundleManifest;
+					manifest = bundleRequest.asset as AssetBundleManifest;
 					if (manifest == null) throw new Exception("AssetBundleManifest not found.");
 					return manifest;
 				}).DoOnCancel(() =>
@@ -36,7 +39,7 @@
 					if (cancel) return;
 					if (manifest != null)
 					{
-						if (setRoot ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
+						if (setRootUri ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
 						SetManifest(manifest);
 					}
 					else
@@ -47,7 +50,7 @@
 			});
 		}
 
-		public void SetManifest(AssetBundleManifest manifest)
+		public void SetManifest(AssetBundleManifest manifest) // TODO clear bundle cache?
 		{
 			if (manifest == null) throw new ArgumentNullException(nameof(manifest));
 			Manifest = manifest;
@@ -61,25 +64,25 @@
 			var all = Manifest.GetAllAssetBundles();
 			for (int i = 0; i < all.Length; i++)
 			{
-				string bundleName = all[i], trim;
-				if (TrimHash(bundleName, out trim))
-					m_BundleNames.Add(trim, bundleName);
+				string actualBundleName = all[i], trimBundleName;
+				if (TrimBundleNameHash(actualBundleName, out trimBundleName))
+					m_BundleNames.Add(trimBundleName, actualBundleName);
 			}
 		}
 
-		bool TrimHash(string bundleName, out string trim)
+		bool TrimBundleNameHash(string normBundleName, out string trimBundleName)
 		{
-			string hash = Manifest.GetAssetBundleHash(bundleName).ToString();
-			if (bundleName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
+			string hash = Manifest.GetAssetBundleHash(normBundleName).ToString();
+			if (normBundleName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
 			{
-				trim = bundleName.Substring(0, bundleName.Length - hash.Length - 1);
+				trimBundleName = normBundleName.Substring(0, normBundleName.Length - hash.Length - 1);
 				return true;
 			}
-			trim = bundleName;
+			trimBundleName = normBundleName;
 			return false;
 		}
 
-		public void UnloadManifest()
+		public void UnloadManifest() // TODO unload bundle cache?
 		{
 			Manifest = null;
 			m_BundleNames.Clear();
@@ -91,24 +94,22 @@
 		{
 			return Observable.Defer(() =>
 			{
-				if (IsManifestLoaded()) return Observable.ReturnUnit();
-				return m_ManifestStatus.FirstOrEmpty(_ => IsManifestLoaded()).AsUnitObservable();
+				if (m_ManifestStatus.Value == ManifestStatus.Loaded) return Observable.ReturnUnit();
+				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && AutoLoadManifest) LoadManifest().Subscribe();
+				return m_ManifestStatus.FirstOrEmpty(status =>
+				{
+					if (status == ManifestStatus.NotLoaded) throw new Exception("No AssetBundleManifest loading or loaded.");
+					return status == ManifestStatus.Loaded;
+				}).AsUnitObservable();
 			});
 		}
+	}
 
-		bool IsManifestLoaded()
-		{
-			if (m_ManifestStatus.Value == ManifestStatus.NotLoaded)
-				throw new Exception("No AssetBundleManifest loading or loaded.");
-			return m_ManifestStatus.Value == ManifestStatus.Loaded;
-		}
-
-		enum ManifestStatus
-		{
-			NotLoaded,
-			Loading,
-			Loaded,
-		}
+	public enum ManifestStatus
+	{
+		NotLoaded,
+		Loading,
+		Loaded,
 	}
 
 	partial class AssetLoader
@@ -117,7 +118,8 @@
 
 		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
 
-		public static IObservable<AssetBundleManifest> LoadManifest(string uri, bool? setRoot = null) => Instance.LoadManifest(uri, setRoot);
+		public static IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) => Instance.LoadManifest(uri, setRootUri);
+		public static IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null) => Instance.LoadManifest(request, setRootUri);
 
 		public static void SetManifest(AssetBundleManifest manifest) => Instance.SetManifest(manifest);
 

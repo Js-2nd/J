@@ -9,19 +9,19 @@
 
 	public sealed class BundleEntry : IEquatable<BundleEntry>
 	{
-		public string NormedBundleName { get; }
+		public string NormBundleName { get; }
 
 		public BundleEntry(string bundleName)
 		{
 			if (bundleName == null) throw new ArgumentNullException(nameof(bundleName));
-			NormedBundleName = AssetLoaderInstance.NormBundleName(bundleName);
+			NormBundleName = AssetLoaderInstance.NormBundleName(bundleName);
 		}
 
-		public bool Equals(BundleEntry other) => NormedBundleName == other?.NormedBundleName;
+		public bool Equals(BundleEntry other) => NormBundleName == other?.NormBundleName;
 
 		public override bool Equals(object obj) => Equals(obj as BundleEntry);
 
-		public override int GetHashCode() => NormedBundleName.GetHashCode();
+		public override int GetHashCode() => NormBundleName.GetHashCode();
 
 		public static bool operator ==(BundleEntry lhs, BundleEntry rhs)
 		{

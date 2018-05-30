@@ -7,9 +7,6 @@
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
-		public delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
-		public delegate IObservable<UnityEngine.Object> LoadDelegate(AssetEntry entry);
-
 		static readonly char[] Delimiters = { '/', '\\' };
 
 		public Simulation SimulationMode;
@@ -21,7 +18,7 @@
 		public string ANDROID_URI;
 		public string IOS_URI;
 
-		public string CurrentManifestUri
+		public string PresetManifestUri
 		{
 			get
 			{
@@ -60,19 +57,16 @@
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
 		Dictionary<string, string> m_BundleNames;
-		Dictionary<BundleEntry, IObservable<AssetBundle>> m_BundleCache;
+		Dictionary<BundleEntry, AsyncSubject<AssetBundle>> m_BundleCache;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
 			m_BundleNames = new Dictionary<string, string>();
-			m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
+			m_BundleCache = new Dictionary<BundleEntry, AsyncSubject<AssetBundle>>();
 			UpdateLoadMethod();
-			if (m_DontDestroyOnLoad)
-				DontDestroyOnLoad(gameObject);
-			if (AutoLoadManifest && !string.IsNullOrWhiteSpace(CurrentManifestUri))
-				LoadManifest(CurrentManifestUri).CatchIgnore((Exception ex) => Debug.LogError(ex)).Subscribe();
+			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
 		}
 
 		void OnValidate()
@@ -93,22 +87,28 @@
 	{
 		public static AssetLoaderInstance Instance => AssetLoaderInstance.Instance;
 
-		public static bool AutoLoadManifest
-		{
-			get { return Instance.AutoLoadManifest; }
-			set { Instance.AutoLoadManifest = value; }
-		}
-
 		public static bool UnloadAssetsOnDestroy
 		{
 			get { return Instance.UnloadAssetsOnDestroy; }
 			set { Instance.UnloadAssetsOnDestroy = value; }
 		}
 
-		public static string CurrentManifestUri
+		public static bool AutoLoadManifest
 		{
-			get { return Instance.CurrentManifestUri; }
-			set { Instance.CurrentManifestUri = value; }
+			get { return Instance.AutoLoadManifest; }
+			set { Instance.AutoLoadManifest = value; }
 		}
+
+		public static string PresetManifestUri
+		{
+			get { return Instance.PresetManifestUri; }
+			set { Instance.PresetManifestUri = value; }
+		}
+	}
+
+	namespace Internal
+	{
+		public delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
+		public delegate IObservable<UnityEngine.Object> LoadAssetDelegate(AssetEntry entry);
 	}
 }

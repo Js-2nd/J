@@ -4,15 +4,15 @@ using UnityEditor.Compilation;
 
 namespace J
 {
+	using J.Internal;
 	using System;
 	using System.Linq;
-	using static AssetLoaderInstance;
 
 	public static class AssetGraphLoader
 	{
 		public static readonly bool IsAvailable;
 		public static readonly GetAssetPathsDelegate GetAssetPaths;
-		public static readonly LoadDelegate Load;
+		public static readonly LoadAssetDelegate Load;
 
 		static AssetGraphLoader()
 		{
