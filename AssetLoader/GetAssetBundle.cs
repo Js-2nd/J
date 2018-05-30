@@ -6,33 +6,37 @@
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
-	using static J.AssetLoaderInstance;
 
 	partial class AssetLoaderInstance
 	{
-		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry, IProgress<float> progress = null)
+		string GetActualBundleName(string normBundleName) => m_BundleNames.GetOrDefault(normBundleName, normBundleName);
+
+		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
+		{
+			var actualBundleName = GetActualBundleName(normBundleName);
+			return UnityWebRequest.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
+		}
+
+		IObservable<AssetBundle> GetAssetBundleCore(string normBundleName, IProgress<float> progress = null)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
-			{
-				var bundleName = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
-				var uri = RootUri + bundleName;
-				var hash = Manifest.GetAssetBundleHash(bundleName);
-				return UnityWebRequest.GetAssetBundle(uri, hash, 0).ToAssetBundleObservable(progress);
-			});
+				GetAssetBundleRequest(normBundleName).SendAsObservable(progress).ToAssetBundle());
 		}
 
 		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
 		{
 			return Observable.Defer(() =>
 			{
-				IObservable<AssetBundle> cache;
-				if (m_BundleCache.TryGetValue(entry, out cache)) return cache;
-				var subject = new AsyncSubject<AssetBundle>();
-				m_BundleCache.Add(entry, subject);
-				GetAssetBundleCore(entry)
-					.DoOnError(ex => m_BundleCache.Remove(entry))
-					.Subscribe(subject);
-				return subject;
+				AsyncSubject<AssetBundle> cache;
+				if (!m_BundleCache.TryGetValue(entry, out cache))
+				{
+					cache = new AsyncSubject<AssetBundle>();
+					m_BundleCache.Add(entry, cache);
+					GetAssetBundleCore(entry.NormBundleName)
+						.DoOnError(ex => m_BundleCache.Remove(entry))
+						.Subscribe(cache);
+				}
+				return cache;
 			});
 		}
 
@@ -41,7 +45,7 @@
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				AssetBundle entryBundle = null;
-				var dep = Manifest.GetAllDependencies(entry.BundleName)
+				var dep = Manifest.GetAllDependencies(entry.NormBundleName)
 					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)));
 				return GetAssetBundle(entry)
 					.Do(bundle => entryBundle = bundle)
