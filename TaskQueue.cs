@@ -11,9 +11,13 @@ namespace J
 	using TaskWeightPair = KeyValuePair<Func<IProgress<float>, IObservable<Unit>>, Func<float>>;
 	using WeightFunc = Func<float>;
 
-	public sealed class TaskQueue : IEnumerable<TaskWeightPair>
+	public sealed class TaskQueue
 	{
 		readonly Queue<IEnumerable<TaskWeightPair>> queue = new Queue<IEnumerable<TaskWeightPair>>();
+
+		public IEnumerable<TaskWeightPair> All => queue.SelectMany(item => item);
+
+		public int Count => queue.Count;
 
 		public void Clear() => queue.Clear();
 
@@ -81,12 +85,12 @@ namespace J
 		public void AddTaskQueue(TaskQueue taskQueue, WeightFunc weightFunc = null)
 		{
 			if (taskQueue == null) return;
-			var pairs = taskQueue.GetPairs();
+			var pairs = taskQueue.All;
 			if (weightFunc != null)
 			{
-				float weight = 1;
-				pairs = pairs.DoOnSubscribe(() => weight = weightFunc())
-					.Select(pair => new TaskWeightPair(pair.Key, () => pair.Value.Get() * weight));
+				float? weight = null;
+				pairs = pairs.Select(pair => new TaskWeightPair(pair.Key,
+					() => (weight ?? (weight = weightFunc()).Value) * pair.Weight()));
 			}
 			queue.Enqueue(pairs);
 		}
@@ -97,56 +101,33 @@ namespace J
 			{
 				var dividableProgress = progress.ToDividableProgress();
 				if (dividableProgress == null)
-					return GetPairs().Select(pair => pair.Key(null))
+					return All.Select(pair => pair.Key(null))
 						.Merge(maxConcurrent).AsSingleUnitObservable();
-				return GetWeight().ContinueWith(total => GetPairs()
-					.Select(pair => pair.Key(dividableProgress.Divide(pair.Value.Get() / total)))
+				float total = All.Aggregate(0f, (sum, pair) => sum + pair.Weight());
+				return All.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)))
 					.Merge(maxConcurrent).AsSingleUnitObservable()
-					.ReportOnCompleted(dividableProgress)
-					.Finally(() => weightCache = null));
+					.ReportOnCompleted(dividableProgress);
 			});
 		}
-
-		IObservable<TaskWeightPair> GetPairs() => queue.Merge();
-
-		AsyncSubject<float> weightCache;
-		IObservable<float> GetWeight()
-		{
-			return Observable.Defer(() =>
-			{
-				if (weightCache == null)
-				{
-					weightCache = new AsyncSubject<float>();
-					GetPairs().Aggregate(0f, (sum, pair) => sum + pair.Value.Get())
-						.DoOnError(ex => weightCache = null)
-						.Subscribe(weightCache);
-				}
-				return weightCache;
-			});
-		}
-
-		public IEnumerator<TaskWeightPair> GetEnumerator() => queue.SelectMany(x => x).GetEnumerator();
-
-		IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 	}
 
 	namespace Internal
 	{
 		static partial class ExtensionMethods
 		{
-			public static float Get(this WeightFunc func) => func?.Invoke() ?? 1;
+			public static IObservable<T> ReportOnCompleted<T>(this IObservable<T> observable, IProgress<float> progress)
+			{
+				if (progress == null) return observable;
+				return observable.DoOnCompleted(() => progress.Report(1f));
+			}
+
+			public static float Weight(this TaskWeightPair pair) => pair.Value?.Invoke() ?? 1;
 
 			public static WeightFunc Combine(this WeightFunc first, WeightFunc second)
 			{
 				if (first == null) return second;
 				if (second == null) return first;
 				return () => first() * second();
-			}
-
-			public static IObservable<T> ReportOnCompleted<T>(this IObservable<T> observable, IProgress<float> progress)
-			{
-				if (progress == null) return observable;
-				return observable.DoOnCompleted(() => progress.Report(1f));
 			}
 		}
 	}
