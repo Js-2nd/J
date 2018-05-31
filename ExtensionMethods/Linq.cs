@@ -14,6 +14,15 @@
 				return item;
 			});
 		}
+		public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T, int> action)
+		{
+			if (action == null) throw new ArgumentNullException(nameof(action));
+			return source.Select((item, index) =>
+			{
+				action(item, index);
+				return item;
+			});
+		}
 
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source)
 		{
