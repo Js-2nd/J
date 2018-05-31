@@ -13,24 +13,26 @@
 		{
 			return WaitForManifestLoaded().Select(_ =>
 			{
-				var stream = bundleNames.Select(GetActualBundleName);
+				var stream = bundleNames.Select(NormBundleName).Select(GetActualBundleName);
 				if (includeDependencies)
 					stream = stream.SelectMany(bundleName => bundleName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(bundleName)));
-				var list = stream.Distinct()
+				var downloader = new BundleDownloader { RootUri = RootUri };
+				downloader.List = stream.Distinct()
 					.Select(bundleName => new BundleInfo
 					{
-						RootUri = RootUri,
+						Downloader = downloader,
 						ActualName = bundleName,
 						Hash = Manifest.GetAssetBundleHash(bundleName),
 					}).Where(info => !Caching.IsVersionCached(info.ActualName, info.Hash))
 					.ToArray();
-				return new BundleDownloader { List = list };
+				return downloader;
 			});
 		}
 	}
 
 	public sealed class BundleDownloader
 	{
+		public string RootUri;
 		public BundleInfo[] List;
 		public ulong TotalSize;
 
@@ -39,13 +41,9 @@
 			var queue = new TaskQueue();
 			for (int i = 0; i < List.Length; i++)
 				queue.Add(List[i].FetchSize);
-			return queue.ToObservable(progress, maxConcurrent).Select(_ =>
-			{
-				TotalSize = 0;
-				for (int i = 0; i < List.Length; i++)
-					TotalSize += List[i].Size;
-				return this;
-			});
+			return queue.ToObservable(progress, maxConcurrent)
+				.DoOnSubscribe(() => TotalSize = 0)
+				.Select(_ => this);
 		}
 
 		public IObservable<Unit> Download(IProgress<float> progress = null, int maxConcurrent = 4)
@@ -62,22 +60,26 @@
 
 	public sealed class BundleInfo
 	{
-		public string RootUri;
+		public BundleDownloader Downloader;
 		public string ActualName;
 		public Hash128 Hash;
 		public ulong Size;
 
 		public IObservable<Unit> FetchSize(IProgress<float> progress = null)
 		{
-			return UnityWebRequest.Head(RootUri + ActualName)
+			return UnityWebRequest.Head(Downloader.RootUri + ActualName)
 				.SendAsObservable(progress)
-				.Do(req => ulong.TryParse(req.GetResponseHeader("Content-Length"), out Size))
+				.Do(req =>
+				{
+					if (ulong.TryParse(req.GetResponseHeader("Content-Length"), out Size))
+						Downloader.TotalSize += Size;
+				})
 				.AsUnitObservable();
 		}
 
 		public IObservable<Unit> Download(IProgress<float> progress = null)
 		{
-			return UnityWebRequest.GetAssetBundle(RootUri + ActualName, Hash, 0)
+			return UnityWebRequest.GetAssetBundle(Downloader.RootUri + ActualName, Hash, 0)
 				.SendAsObservable(progress)
 				.AsUnitObservable();
 		}
