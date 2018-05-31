@@ -1,89 +1,93 @@
-﻿using UnityEngine.Networking;
-
-namespace J
+﻿namespace J
 {
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
 	using UniRx;
 	using UnityEngine;
+	using UnityEngine.Networking;
 
 	partial class AssetLoaderInstance
 	{
-		public IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames, bool includeDependencies = true)
+		public IObservable<BundleDownloader> Download(IEnumerable<string> bundleNames, bool includeDependencies = true)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
+			return WaitForManifestLoaded().Select(_ =>
 			{
 				var stream = bundleNames.Select(GetActualBundleName);
 				if (includeDependencies)
 					stream = stream.SelectMany(bundleName => bundleName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(bundleName)));
 				var list = stream.Distinct()
-					.Select(bundleName => new KeyValuePair<string, Hash128>(bundleName, Manifest.GetAssetBundleHash(bundleName)))
-					.Where(item => !Caching.IsVersionCached(item.Key, item.Value)).ToArray();
-				var downloader = new BatchDownloader
-				{
-					RootUri = RootUri,
-					List = list,
-				};
-				return Observable.Return(downloader);
+					.Select(bundleName => new BundleInfo
+					{
+						RootUri = RootUri,
+						ActualName = bundleName,
+						Hash = Manifest.GetAssetBundleHash(bundleName),
+					}).Where(info => !Caching.IsVersionCached(info.ActualName, info.Hash))
+					.ToArray();
+				return new BundleDownloader { List = list };
+			});
+		}
+	}
+
+	public sealed class BundleDownloader
+	{
+		public BundleInfo[] List;
+		public ulong TotalSize;
+
+		public IObservable<BundleDownloader> FetchSize(IProgress<float> progress = null, int maxConcurrent = 4)
+		{
+			var queue = new TaskQueue();
+			for (int i = 0; i < List.Length; i++)
+				queue.Add(List[i].FetchSize);
+			return queue.ToObservable(progress, maxConcurrent).Select(_ =>
+			{
+				TotalSize = 0;
+				for (int i = 0; i < List.Length; i++)
+					TotalSize += List[i].Size;
+				return this;
 			});
 		}
 
-		//public IObservable<Unit> Download(IEnumerable<string> bundleNames, IProgress<float> progress = null, bool includeDependencies = true)
-		//{
-		//	return WaitForManifestLoaded().ContinueWith(_ =>
-		//	{
-		//		var set = new HashSet<string>();
-		//		foreach (var item in bundleNames)
-		//		{
-		//			var bundleName = new BundleEntry(item).NormBundleName;
-		//			set.Add(bundleName);
-		//			if (!includeDependencies) continue;
-		//			var dep = Manifest.GetAllDependencies(bundleName);
-		//			for (int i = 0; i < dep.Length; i++)
-		//				set.Add(dep[i]);
-		//		}
-		//		return set.Where(bundleName => !Caching.IsVersionCached(bundleName, Manifest.GetAssetBundleHash(bundleName)))
-		//			.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
-		//			.ToTaskQueue().ToObservable(progress);
-		//	});
-		//}
-
-		//public IObservable<Unit> DownloadAssetBundleProgress(IEnumerable<string> bundleNames, IProgress<float> progress = null, int maxConcurrent = 4)
-		//{
-		//	return WaitForManifestLoaded().ContinueWith(_ =>
-		//	{
-		//		var set = new HashSet<string>();
-		//		foreach (var item in bundleNames)
-		//		{
-		//			var bundleName = new BundleEntry(item).NormBundleName;
-		//			set.Add(bundleName);
-		//			var dep = Manifest.GetAllDependencies(bundleName);
-		//			for (int i = 0; i < dep.Length; i++)
-		//				set.Add(dep[i]);
-		//		}
-		//		return set.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
-		//			.ToTaskList().SetMaxConcurrent(maxConcurrent).ToObservable(progress);
-		//	});
-		//}
-
-	}
-
-	public sealed class BatchDownloader
-	{
-		public string RootUri;
-		public KeyValuePair<string, Hash128>[] List;
-
-		public TaskQueue ToTaskQueue()
+		public IObservable<Unit> Download(IProgress<float> progress = null, int maxConcurrent = 4)
 		{
 			var queue = new TaskQueue();
 			for (int i = 0; i < List.Length; i++)
 			{
-				var item = List[i];
-				var request = UnityWebRequest.GetAssetBundle(RootUri + item.Key, item.Value, 0);
-				queue.Add(progress => request.SendAsObservable(progress).AsUnitObservable());
+				var info = List[i];
+				queue.Add(info.Download, info.Weight);
 			}
-			return queue;
+			return queue.ToObservable(progress, maxConcurrent);
 		}
+	}
+
+	public sealed class BundleInfo
+	{
+		public string RootUri;
+		public string ActualName;
+		public Hash128 Hash;
+		public ulong Size;
+
+		public IObservable<Unit> FetchSize(IProgress<float> progress = null)
+		{
+			return UnityWebRequest.Head(RootUri + ActualName)
+				.SendAsObservable(progress)
+				.Do(req => ulong.TryParse(req.GetResponseHeader("Content-Length"), out Size))
+				.AsUnitObservable();
+		}
+
+		public IObservable<Unit> Download(IProgress<float> progress = null)
+		{
+			return UnityWebRequest.GetAssetBundle(RootUri + ActualName, Hash, 0)
+				.SendAsObservable(progress)
+				.AsUnitObservable();
+		}
+
+		public float Weight() => Mathf.Max(Size, 1);
+	}
+
+	public static partial class AssetLoader
+	{
+		public static IObservable<BundleDownloader> Download(IEnumerable<string> bundleNames,
+			bool includeDependencies = true) => Instance.Download(bundleNames, includeDependencies);
 	}
 }
