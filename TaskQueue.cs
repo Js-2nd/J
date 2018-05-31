@@ -102,11 +102,13 @@ namespace J
 				var dividableProgress = progress.ToDividableProgress();
 				if (dividableProgress == null)
 					return All.Select(pair => pair.Key(null))
-						.Merge(maxConcurrent).AsSingleUnitObservable();
+						.Merge(maxConcurrent)
+						.AsSingleUnitObservable();
 				float total = All.Aggregate(0f, (sum, pair) => sum + pair.Weight());
 				return All.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)))
-					.Merge(maxConcurrent).AsSingleUnitObservable()
-					.ReportOnCompleted(dividableProgress);
+					.Merge(maxConcurrent)
+					.ReportOnCompleted(dividableProgress)
+					.AsSingleUnitObservable();
 			});
 		}
 	}
