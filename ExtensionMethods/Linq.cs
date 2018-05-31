@@ -5,6 +5,16 @@
 
 	public static partial class ExtensionMethods
 	{
+		public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T> action)
+		{
+			if (action == null) throw new ArgumentNullException(nameof(action));
+			return source.Select(item =>
+			{
+				action(item);
+				return item;
+			});
+		}
+
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source)
 		{
 			return source.Take(1);
