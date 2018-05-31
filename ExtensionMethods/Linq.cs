@@ -7,21 +7,28 @@
 	{
 		public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T> action)
 		{
-			if (action == null) throw new ArgumentNullException(nameof(action));
-			return source.Select(item =>
+			foreach (var item in source)
 			{
 				action(item);
-				return item;
-			});
+				yield return item;
+			}
 		}
 		public static IEnumerable<T> Do<T>(this IEnumerable<T> source, Action<T, int> action)
 		{
-			if (action == null) throw new ArgumentNullException(nameof(action));
-			return source.Select((item, index) =>
+			int index = -1;
+			foreach (var item in source)
 			{
+				++index;
 				action(item, index);
-				return item;
-			});
+				yield return item;
+			}
+		}
+
+		public static IEnumerable<T> DoOnStart<T>(this IEnumerable<T> source, Action action)
+		{
+			action();
+			foreach (var item in source)
+				yield return item;
 		}
 
 		public static IEnumerable<T> FirstOrEmpty<T>(this IEnumerable<T> source)
