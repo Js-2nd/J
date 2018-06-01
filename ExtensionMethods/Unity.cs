@@ -28,14 +28,16 @@
 			});
 		}
 
-		public static IObservable<AssetBundle> ToAssetBundle(this IObservable<UnityWebRequest> source, bool throwError = true)
+		public static IObservable<AssetBundle> ToAssetBundle(this IObservable<UnityWebRequest> source,
+			bool throwError = true)
 		{
 			return source.Select(request =>
 			{
 				try
 				{
 					var bundle = DownloadHandlerAssetBundle.GetContent(request);
-					if (bundle == null) throw new Exception("Invalid AssetBundle. " + request.url);
+					if (bundle == null)
+						throw new InvalidOperationException("Invalid AssetBundle. " + request.url);
 					return bundle;
 				}
 				catch

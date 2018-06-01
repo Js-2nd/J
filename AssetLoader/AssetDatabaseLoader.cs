@@ -6,6 +6,7 @@ namespace J
 {
 	using J.Internal;
 	using System;
+	using System.IO;
 	using System.Linq;
 	using UniRx;
 
@@ -32,7 +33,9 @@ namespace J
 			{
 				string path = getAssetPaths(entry.NormBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
-					return Observable.Throw<UnityEngine.Object>(new Exception("Asset not found. " + entry), Scheduler.MainThreadIgnoreTimeScale);
+					return Observable.Throw<UnityEngine.Object>(
+						new FileNotFoundException($"Asset not found. {entry}"),
+						Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)
 				{
 					case LoadMethod.Single:
@@ -41,8 +44,7 @@ namespace J
 						return AssetDatabase.LoadAllAssetsAtPath(path)
 							.Where(obj => entry.AssetType.IsInstanceOfType(obj))
 							.ToObservable(Scheduler.MainThreadIgnoreTimeScale);
-					default:
-						throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
+					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
 				}
 			};
 #else

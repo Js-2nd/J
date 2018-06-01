@@ -19,8 +19,7 @@
 					case LoadMethod.Multi:
 						return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
 							.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
-					default:
-						throw new Exception("Unknown LoadMethod. " + entry.LoadMethod);
+					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
 				}
 			});
 		}

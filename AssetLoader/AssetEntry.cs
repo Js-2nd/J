@@ -26,6 +26,8 @@
 			AssetType = assetType ?? typeof(UnityEngine.Object);
 			LoadMethod = loadMethod ?? LoadMethod.Single;
 		}
+
+		public override string ToString() => $"[{LoadMethod}]{BundleEntry}<{AssetType}>{AssetName}";
 	}
 
 	public enum LoadMethod

@@ -1,6 +1,7 @@
 ﻿namespace J
 {
 	using System;
+	using System.IO;
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
@@ -31,11 +32,12 @@
 				return request.SendAsObservable().ToAssetBundle().ContinueWith(bundle =>
 				{
 					manifestBundle = bundle;
-					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest").AsAsyncOperationObservable();
+					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest")
+						.AsAsyncOperationObservable();
 				}).Select(bundleRequest =>
 				{
 					manifest = bundleRequest.asset as AssetBundleManifest;
-					if (manifest == null) throw new Exception("AssetBundleManifest not found.");
+					if (manifest == null) throw new InvalidDataException("AssetBundleManifest not found.");
 					return manifest;
 				}).DoOnCancel(() =>
 				{
@@ -101,11 +103,14 @@
 		{
 			return Observable.Defer(() =>
 			{
-				if (m_ManifestStatus.Value == ManifestStatus.Loaded) return Observable.ReturnUnit();
-				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && AutoLoadManifest) LoadManifest().Subscribe();
+				if (m_ManifestStatus.Value == ManifestStatus.Loaded)
+					return Observable.ReturnUnit();
+				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && AutoLoadManifest)
+					LoadManifest().Subscribe();
 				return m_ManifestStatus.FirstOrEmpty(status =>
 				{
-					if (status == ManifestStatus.NotLoaded) throw new Exception("No AssetBundleManifest loading or loaded.");
+					if (status == ManifestStatus.NotLoaded)
+						throw new InvalidOperationException("No AssetBundleManifest loading or loaded.");
 					return status == ManifestStatus.Loaded;
 				}).AsUnitObservable();
 			});

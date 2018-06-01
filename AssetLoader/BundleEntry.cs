@@ -23,6 +23,8 @@
 
 		public override int GetHashCode() => NormBundleName.GetHashCode();
 
+		public override string ToString() => NormBundleName;
+
 		public static bool operator ==(BundleEntry lhs, BundleEntry rhs)
 		{
 			if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
