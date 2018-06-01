@@ -15,7 +15,8 @@
 			{
 				var stream = bundleNames.Select(NormBundleName).Select(GetActualBundleName);
 				if (includeDependencies)
-					stream = stream.SelectMany(bundleName => bundleName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(bundleName)));
+					stream = stream.SelectMany(bundleName =>
+						bundleName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(bundleName)));
 				var downloader = new BundleDownloader { RootUri = RootUri };
 				downloader.List = stream.Distinct()
 					.Select(bundleName => new BundleInfo
