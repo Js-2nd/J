@@ -8,8 +8,7 @@ using UniRx;
 namespace J
 {
 	using TaskFunc = Func<IProgress<float>, IObservable<Unit>>;
-	using TaskWeightPair = KeyValuePair<Func<IProgress<float>, IObservable<Unit>>, Func<float>>;
-	using WeightFunc = Func<float>;
+	using TaskWeightPair = KeyValuePair<Func<IProgress<float>, IObservable<Unit>>, float?>;
 
 	public sealed class TaskQueue
 	{
@@ -21,81 +20,81 @@ namespace J
 
 		public void Clear() => queue.Clear();
 
-		public void Add(TaskFunc taskFunc, WeightFunc weightFunc = null)
+		public void Add(TaskFunc taskFunc, float? weight = null)
 		{
-			var pair = new TaskWeightPair(taskFunc, weightFunc);
+			var pair = new TaskWeightPair(taskFunc, weight);
 			queue.Enqueue(pair.ToSingleEnumerable());
 		}
 
-		public void AddObservable(IObservable<Unit> observable, WeightFunc weightFunc = null)
+		public void AddObservable(IObservable<Unit> observable, float? weight = null)
 		{
 			if (observable == null) return;
 			TaskFunc task = observable.ReportOnCompleted;
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
-		public void AddObservable<T>(IObservable<T> observable, WeightFunc weightFunc = null)
+		public void AddObservable<T>(IObservable<T> observable, float? weight = null)
 		{
 			if (observable == null) return;
 			var unitObservable = observable as IObservable<Unit>;
 			if (unitObservable != null)
 			{
-				AddObservable(unitObservable, weightFunc);
+				AddObservable(unitObservable, weight);
 				return;
 			}
 			TaskFunc task = progress => observable.AsUnitObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
 
-		public void AddCoroutine(Func<IProgress<float>, IEnumerator> coroutine, WeightFunc weightFunc = null)
+		public void AddCoroutine(Func<IProgress<float>, IEnumerator> coroutine, float? weight = null)
 		{
 			if (coroutine == null) return;
 			TaskFunc task = progress => coroutine(progress)
 				.ToObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
-		public void AddCoroutine<T1>(Func<T1, IProgress<float>, IEnumerator> coroutine, T1 arg1, WeightFunc weightFunc = null)
+		public void AddCoroutine<T1>(Func<T1, IProgress<float>, IEnumerator> coroutine,
+			T1 arg1, float? weight = null)
 		{
 			if (coroutine == null) return;
 			TaskFunc task = progress => coroutine(arg1, progress)
 				.ToObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
-		public void AddCoroutine<T1, T2>(Func<T1, T2, IProgress<float>, IEnumerator> coroutine, T1 arg1, T2 arg2, WeightFunc weightFunc = null)
+		public void AddCoroutine<T1, T2>(Func<T1, T2, IProgress<float>, IEnumerator> coroutine,
+			T1 arg1, T2 arg2, float? weight = null)
 		{
 			if (coroutine == null) return;
 			TaskFunc task = progress => coroutine(arg1, arg2, progress)
 				.ToObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
-		public void AddCoroutine<T1, T2, T3>(Func<T1, T2, T3, IProgress<float>, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3, WeightFunc weightFunc = null)
+		public void AddCoroutine<T1, T2, T3>(Func<T1, T2, T3, IProgress<float>, IEnumerator> coroutine,
+			T1 arg1, T2 arg2, T3 arg3, float? weight = null)
 		{
 			if (coroutine == null) return;
 			TaskFunc task = progress => coroutine(arg1, arg2, arg3, progress)
 				.ToObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
-		public void AddCoroutine<T1, T2, T3, T4>(Func<T1, T2, T3, T4, IProgress<float>, IEnumerator> coroutine, T1 arg1, T2 arg2, T3 arg3, T4 arg4, WeightFunc weightFunc = null)
+		public void AddCoroutine<T1, T2, T3, T4>(Func<T1, T2, T3, T4, IProgress<float>, IEnumerator> coroutine,
+			T1 arg1, T2 arg2, T3 arg3, T4 arg4, float? weight = null)
 		{
 			if (coroutine == null) return;
 			TaskFunc task = progress => coroutine(arg1, arg2, arg3, arg4, progress)
 				.ToObservable().ReportOnCompleted(progress);
-			Add(task, weightFunc);
+			Add(task, weight);
 		}
 
-		public void AddTaskQueue(TaskQueue taskQueue, WeightFunc weightFunc = null)
+		public void AddTaskQueue(TaskQueue taskQueue, float? weight = null)
 		{
 			if (taskQueue == null) return;
 			var pairs = taskQueue.All;
-			if (weightFunc != null)
-			{
-				float? weight = null;
-				pairs = pairs.Select(pair => new TaskWeightPair(pair.Key,
-					() => (weight ?? (weight = weightFunc()).Value) * pair.Weight()));
-			}
+			if (weight != null) pairs = pairs.Select(pair =>
+				new TaskWeightPair(pair.Key, pair.Weight() * weight.Value));
 			queue.Enqueue(pairs);
 		}
 
-		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 4)
+		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 8)
 		{
 			return Observable.Defer(() =>
 			{
@@ -123,14 +122,7 @@ namespace J
 				return observable.DoOnCompleted(() => progress.Report(1f));
 			}
 
-			public static float Weight(this TaskWeightPair pair) => pair.Value?.Invoke() ?? 1;
-
-			public static WeightFunc Combine(this WeightFunc first, WeightFunc second)
-			{
-				if (first == null) return second;
-				if (second == null) return first;
-				return () => first() * second();
-			}
+			public static float Weight(this TaskWeightPair pair) => pair.Value ?? 1;
 		}
 	}
 }

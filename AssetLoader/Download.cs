@@ -34,28 +34,54 @@
 	public sealed class BundleDownloader
 	{
 		public string RootUri;
-		public BundleInfo[] List;
-		public ulong TotalSize;
+		public IReadOnlyList<BundleInfo> List;
+		public int FetchedCount;
+		public ulong FetchedTotalSize;
 
-		public IObservable<BundleDownloader> FetchSize(IProgress<float> progress = null, int maxConcurrent = 4)
+		public IObservable<BundleDownloader> FetchSize(IProgress<float> progress = null, int maxConcurrent = 32)
 		{
-			var queue = new TaskQueue();
-			for (int i = 0; i < List.Length; i++)
-				queue.Add(List[i].FetchSize);
-			return queue.ToObservable(progress, maxConcurrent)
-				.DoOnSubscribe(() => TotalSize = 0)
-				.Select(_ => this);
+			return Observable.Defer(() =>
+			{
+				var queue = new TaskQueue();
+				for (int i = 0; i < List.Count; i++)
+				{
+					var info = List[i];
+					if (info.Size == 0) queue.Add(info.FetchSize);
+				}
+				return queue.ToObservable(progress, maxConcurrent).Select(_ => this);
+			});
 		}
 
-		public IObservable<Unit> Download(IProgress<float> progress = null, int maxConcurrent = 4)
+		public IObservable<Unit> Download(IProgress<float> progress = null, int maxConcurrent = 8)
 		{
-			var queue = new TaskQueue();
-			for (int i = 0; i < List.Length; i++)
+			return Observable.Defer(() =>
 			{
-				var info = List[i];
-				queue.Add(info.Download, info.Weight);
-			}
-			return queue.ToObservable(progress, maxConcurrent);
+				TaskQueue fetchQueue = null;
+				TaskQueue nonFetchQueue = null;
+				int fetched = 0;
+				ulong fetchedSize = 0;
+				for (int i = 0; i < List.Count; i++)
+				{
+					var info = List[i];
+					if (info.Size > 0)
+					{
+						if (fetchQueue == null) fetchQueue = new TaskQueue();
+						fetchQueue.Add(info.Download, info.Size);
+						fetched++;
+						fetchedSize += info.Size;
+					}
+					else
+					{
+						if (nonFetchQueue == null) nonFetchQueue = new TaskQueue();
+						nonFetchQueue.Add(info.Download);
+					}
+				}
+				var queue = new TaskQueue();
+				if (fetchQueue != null) queue.AddTaskQueue(fetchQueue);
+				if (nonFetchQueue != null) queue.AddTaskQueue(nonFetchQueue,
+					fetched > 0 ? (float?)fetchedSize * (List.Count - fetched) / fetched : null);
+				return queue.ToObservable(progress, maxConcurrent);
+			});
 		}
 	}
 
@@ -73,7 +99,10 @@
 				.Do(req =>
 				{
 					if (ulong.TryParse(req.GetResponseHeader("Content-Length"), out Size))
-						Downloader.TotalSize += Size;
+					{
+						Downloader.FetchedCount++;
+						Downloader.FetchedTotalSize += Size;
+					}
 				})
 				.AsUnitObservable();
 		}
@@ -84,8 +113,6 @@
 				.SendAsObservable(progress)
 				.AsUnitObservable();
 		}
-
-		public float Weight() => Mathf.Max(Size, 1);
 	}
 
 	public static partial class AssetLoader

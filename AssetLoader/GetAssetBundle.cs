@@ -13,7 +13,7 @@
 
 		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
 		{
-			var actualBundleName = GetActualBundleName(normBundleName);
+			string actualBundleName = GetActualBundleName(normBundleName);
 			return UnityWebRequest.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
 		}
 
@@ -40,7 +40,7 @@
 			});
 		}
 
-		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 4)
+		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
