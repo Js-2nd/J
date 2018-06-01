@@ -7,35 +7,61 @@
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public partial class AssetLoaderInstance
+	partial class AssetLoaderInstance
 	{
-		readonly Dictionary<BundleEntry, IObservable<AssetBundle>> m_BundleCache = new Dictionary<BundleEntry, IObservable<AssetBundle>>();
+		string GetActualBundleName(string normBundleName) => m_BundleNames.GetOrDefault(normBundleName, normBundleName);
 
-		IObservable<AssetBundle> GetAssetBundleCore(BundleEntry entry)
+		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
+		{
+			string actualBundleName = GetActualBundleName(normBundleName);
+			return UnityWebRequest.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
+		}
+
+		IObservable<AssetBundle> GetAssetBundleCore(string normBundleName, IProgress<float> progress = null)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
-			{
-				var name = m_BundleNames.GetOrDefault(entry.BundleName, entry.BundleName);
-				var uri = RootUri + name;
-				var hash = Manifest.GetAssetBundleHash(name);
-				return UnityWebRequest.GetAssetBundle(uri, hash, 0).AsAssetBundleObservable();
-			});
+				GetAssetBundleRequest(normBundleName).SendAsObservable(progress).ToAssetBundle());
 		}
 
 		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
 		{
-			return m_BundleCache.GetOrAdd(entry, e => GetAssetBundleCore(e).Replay(Scheduler.MainThreadIgnoreTimeScale));
+			return Observable.Defer(() =>
+			{
+				AsyncSubject<AssetBundle> cache;
+				if (!m_BundleCache.TryGetValue(entry, out cache))
+				{
+					cache = new AsyncSubject<AssetBundle>();
+					m_BundleCache.Add(entry, cache);
+					GetAssetBundleCore(entry.NormBundleName)
+						.DoOnError(ex => m_BundleCache.Remove(entry))
+						.Subscribe(cache);
+				}
+				return cache;
+			});
 		}
 
-		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry)
+		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
 		{
-			return WaitForManifestLoaded()
-				.ContinueWith(_ => entry.BundleName.ToSingleEnumerable()
-					.Concat(Manifest.GetAllDependencies(entry.BundleName))
-					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)))
-					.WhenAll())
-				.SelectMany(bundles => bundles.Take(1))
-				.Share();
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				AssetBundle entryBundle = null;
+				var dep = Manifest.GetAllDependencies(entry.NormBundleName)
+					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)));
+				return GetAssetBundle(entry)
+					.Do(bundle => entryBundle = bundle)
+					.ToSingleEnumerable().Concat(dep)
+					.Merge(maxConcurrent).AsSingleUnitObservable()
+					.Select(__ => entryBundle);
+			});
 		}
+	}
+
+	partial class AssetLoader
+	{
+		public static IObservable<AssetBundle> GetAssetBundle(string bundleName) =>
+			Instance.GetAssetBundle(new BundleEntry(bundleName));
+
+		public static IObservable<AssetBundle> GetAssetBundleWithDependencies(string bundleName) =>
+			Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
 	}
 }

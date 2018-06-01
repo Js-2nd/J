@@ -2,18 +2,35 @@
 {
 	using System;
 
-	public partial class AssetLoaderInstance
+	partial class AssetLoaderInstance
 	{
-		static string NormBundleName(string bundleName) => bundleName.ToLower();
+		public static string NormBundleName(string bundleName) => bundleName.ToLower();
+	}
 
-		public class BundleEntry : Tuple<string>
+	public sealed class BundleEntry : IEquatable<BundleEntry>
+	{
+		public string NormBundleName { get; }
+
+		public BundleEntry(string bundleName)
 		{
-			public string BundleName => base.Item1;
-
-			public BundleEntry(string bundleName) : base(NormBundleName(bundleName)) { }
-
-			[Obsolete("Use BundleName instead", true)]
-			public new object Item1 { get; }
+			if (bundleName == null) throw new ArgumentNullException(nameof(bundleName));
+			NormBundleName = AssetLoaderInstance.NormBundleName(bundleName);
 		}
+
+		public bool Equals(BundleEntry other) => NormBundleName == other?.NormBundleName;
+
+		public override bool Equals(object obj) => Equals(obj as BundleEntry);
+
+		public override int GetHashCode() => NormBundleName.GetHashCode();
+
+		public override string ToString() => NormBundleName;
+
+		public static bool operator ==(BundleEntry lhs, BundleEntry rhs)
+		{
+			if (ReferenceEquals(lhs, null)) return ReferenceEquals(rhs, null);
+			return lhs.Equals(rhs);
+		}
+
+		public static bool operator !=(BundleEntry lhs, BundleEntry rhs) => !(lhs == rhs);
 	}
 }

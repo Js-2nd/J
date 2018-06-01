@@ -8,12 +8,12 @@
 
 		protected virtual void Awake()
 		{
-			if (Instance == null)
+			if (Instance == null || Instance == this)
 			{
 				Instance = this as T;
 				SingletonAwake();
 			}
-			else if (Instance != this)
+			else
 			{
 				Debug.LogWarningFormat("Destroy {0} on {1} since there is one on {2}.", typeof(T).Name, name, Instance.name);
 				Destroy(this);
@@ -22,7 +22,7 @@
 
 		protected virtual void OnDestroy()
 		{
-			if (Instance && Instance == this)
+			if (Instance != null && Instance == this)
 			{
 				SingletonOnDestroy();
 			}

@@ -27,7 +27,7 @@
 		{
 			if (cancel == null) cancel = new CompositeDisposable();
 			var divide = new DividableProgress();
-			float last = divide.inner.Value;
+			float last = 0;
 			divide.Subscribe(current =>
 			{
 				float delta = current - last;
@@ -35,6 +35,20 @@
 				inner.Value += delta * weight;
 			}).AddTo(cancel);
 			return divide;
+		}
+	}
+
+	public static partial class ExtensionMethods
+	{
+		public static DividableProgress ToDividableProgress(this IProgress<float> progress)
+		{
+			var dividableProgress = progress as DividableProgress;
+			if (dividableProgress == null && progress != null)
+			{
+				dividableProgress = new DividableProgress();
+				dividableProgress.Subscribe(progress.Report);
+			}
+			return dividableProgress;
 		}
 	}
 }
