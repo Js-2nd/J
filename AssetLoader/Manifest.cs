@@ -4,57 +4,48 @@
 	using System.IO;
 	using UniRx;
 	using UnityEngine;
-	using UnityEngine.Networking;
 
 	partial class AssetLoaderInstance
 	{
+		const string ManifestVersionKey = "AssetLoader.ManifestVersion";
+		const string ManifestETagKey = "AssetLoader.ManifestETag";
+
 		public AssetBundleManifest Manifest { get; private set; }
 		public string RootUri { get; set; }
 
-		public IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null)
+		public IObservable<RequestVersionInfo> LoadManifest(string uri = null, bool? setRootUri = null)
 		{
 			if (string.IsNullOrEmpty(uri))
 			{
 				uri = PresetManifestUri;
 				if (string.IsNullOrEmpty(uri)) uri = "/";
 			}
-			return LoadManifest(UnityWebRequest.GetAssetBundle(uri));
-		}
-		public IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null)
-		{
 			return Observable.Defer(() =>
 			{
 				m_ManifestStatus.Value = ManifestStatus.Loading;
+				RequestVersionInfo versionInfo = null;
 				AssetBundle manifestBundle = null;
-				AssetBundleManifest manifest = null;
-				bool cancel = false;
-				string uri = request.url;
-				return request.SendAsObservable().ToAssetBundle().ContinueWith(bundle =>
+				return SendAssetBundleRequest(uri, ManifestVersionKey, ManifestETagKey).Select(info =>
+				{
+					versionInfo = info;
+					return info.Request;
+				}).ToAssetBundle().ContinueWith(bundle =>
 				{
 					manifestBundle = bundle;
 					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest")
 						.AsAsyncOperationObservable();
 				}).Select(bundleRequest =>
 				{
-					manifest = bundleRequest.asset as AssetBundleManifest;
+					var manifest = bundleRequest.asset as AssetBundleManifest;
 					if (manifest == null) throw new InvalidDataException("AssetBundleManifest not found.");
-					return manifest;
-				}).DoOnCancel(() =>
-				{
-					cancel = true;
+					if (setRootUri ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
+					SetManifest(manifest);
+					return versionInfo;
 				}).Finally(() =>
 				{
 					if (manifestBundle != null) manifestBundle.Unload(false);
-					if (cancel) return;
-					if (manifest != null)
-					{
-						if (setRootUri ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
-						SetManifest(manifest);
-					}
-					else
-					{
+					if (m_ManifestStatus.Value == ManifestStatus.Loading)
 						m_ManifestStatus.Value = Manifest != null ? ManifestStatus.Loaded : ManifestStatus.NotLoaded;
-					}
 				});
 			});
 		}
@@ -130,10 +121,8 @@
 
 		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
 
-		public static IObservable<AssetBundleManifest> LoadManifest(string uri = null, bool? setRootUri = null) =>
+		public static IObservable<RequestVersionInfo> LoadManifest(string uri = null, bool? setRootUri = null) =>
 			Instance.LoadManifest(uri, setRootUri);
-		public static IObservable<AssetBundleManifest> LoadManifest(UnityWebRequest request, bool? setRootUri = null) =>
-			Instance.LoadManifest(request, setRootUri);
 
 		public static void SetManifest(AssetBundleManifest manifest) => Instance.SetManifest(manifest);
 

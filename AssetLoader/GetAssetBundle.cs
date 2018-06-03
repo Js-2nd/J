@@ -1,5 +1,6 @@
 ﻿namespace J
 {
+	using J.Internal;
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
@@ -9,6 +10,37 @@
 
 	partial class AssetLoaderInstance
 	{
+		static Hash128 VersionToHash(int version) => new Hash128(0, 0, 0, (uint)version);
+
+		public static IObservable<RequestVersionInfo> SendAssetBundleRequest(string uri, string versionKey, string eTagKey)
+		{
+			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
+			{
+				int version = PlayerPrefs.GetInt(versionKey);
+				if (Caching.IsVersionCached(uri, VersionToHash(version)))
+				{
+					var request = UnityWebRequest.GetAssetBundle(uri, VersionToHash(version + 1), 0);
+					request.SetRequestHeader(HttpHeader.IfNoneMatch, PlayerPrefs.GetString(eTagKey));
+					return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
+					{
+						if (req.responseCode == 304)
+							return UnityWebRequest.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable()
+								.Select(r => new RequestVersionInfo { Request = r, Version = version, IsNew = false });
+						req.TryThrowError();
+						PlayerPrefs.SetInt(versionKey, version + 1);
+						PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
+						var info = new RequestVersionInfo { Request = req, Version = version + 1, IsNew = true };
+						return Observable.Return(info);
+					});
+				}
+				return UnityWebRequest.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
+				{
+					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
+					return new RequestVersionInfo { Request = req, Version = version, IsNew = true };
+				});
+			});
+		}
+
 		string GetActualBundleName(string normBundleName) => m_BundleNames.GetOrDefault(normBundleName, normBundleName);
 
 		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
@@ -56,8 +88,19 @@
 		}
 	}
 
+	public class RequestVersionInfo
+	{
+		public UnityWebRequest Request;
+		public int Version;
+		public bool IsNew;
+	}
+
 	partial class AssetLoader
 	{
+		public static IObservable<RequestVersionInfo>
+			SendAssetBundleRequest(string uri, string versionKey, string eTagKey) =>
+			AssetLoaderInstance.SendAssetBundleRequest(uri, versionKey, eTagKey);
+
 		public static IObservable<AssetBundle> GetAssetBundle(string bundleName) =>
 			Instance.GetAssetBundle(new BundleEntry(bundleName));
 

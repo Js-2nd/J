@@ -2,6 +2,7 @@
 {
 	using J;
 	using System;
+	using System.IO;
 	using UniRx;
 	using UnityEngine.Networking;
 
@@ -42,7 +43,7 @@
 				{
 					var bundle = DownloadHandlerAssetBundle.GetContent(request);
 					if (bundle == null)
-						throw new InvalidOperationException("Invalid AssetBundle. " + request.url);
+						throw new InvalidDataException("Invalid AssetBundle. " + request.url);
 					return bundle;
 				}
 				catch
