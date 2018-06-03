@@ -1,5 +1,6 @@
 ﻿namespace J
 {
+	using J.Internal;
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
@@ -98,7 +99,7 @@
 				.SendAsObservable(progress)
 				.Do(req =>
 				{
-					if (ulong.TryParse(req.GetResponseHeader("Content-Length"), out Size))
+					if (ulong.TryParse(req.GetResponseHeader(HttpHeader.ContentLength), out Size))
 					{
 						Downloader.FetchedCount++;
 						Downloader.FetchedTotalSize += Size;
