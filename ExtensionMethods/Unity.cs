@@ -7,6 +7,12 @@
 
 	public static partial class ExtensionMethods
 	{
+		public static void TryThrowError(this UnityWebRequest request, bool throwNetworkError = true, bool throwHttpError = true)
+		{
+			if (request.isNetworkError && throwNetworkError) throw new NetworkException(request);
+			if (request.isHttpError && throwHttpError) throw new HttpException(request);
+		}
+
 		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
 			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
 			bool autoDispose = true)
@@ -19,8 +25,7 @@
 					.Select(op =>
 					{
 						var req = op.webRequest;
-						if (req.isNetworkError && throwNetworkError) throw new NetworkException(req);
-						if (req.isHttpError && throwHttpError) throw new HttpException(req);
+						req.TryThrowError(throwNetworkError, throwHttpError);
 						return req;
 					});
 				if (autoDispose) stream = stream.Finally(request.Dispose);
