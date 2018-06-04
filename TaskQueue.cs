@@ -14,7 +14,15 @@ namespace J
 	{
 		readonly Queue<IEnumerable<TaskWeightPair>> queue = new Queue<IEnumerable<TaskWeightPair>>();
 
-		public IEnumerable<TaskWeightPair> All => queue.SelectMany(item => item);
+		public IEnumerable<TaskWeightPair> All
+		{
+			get
+			{
+				foreach (var pairs in queue)
+					foreach (var pair in pairs)
+						yield return pair;
+			}
+		}
 
 		public int Count => queue.Count;
 
