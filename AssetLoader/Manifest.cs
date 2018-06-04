@@ -11,7 +11,8 @@
 		const string ManifestETagKey = "AssetLoader.ManifestETag";
 
 		public AssetBundleManifest Manifest { get; private set; }
-		public VersionInfo ManifestVersionInfo { get; private set; }
+		public int ManifestVersion { get; private set; }
+		public bool ManifestIsNew { get; private set; }
 		public string RootUri { get; set; }
 
 		public IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null)
@@ -24,11 +25,11 @@
 			return Observable.Defer(() =>
 			{
 				m_ManifestStatus.Value = ManifestStatus.Loading;
-				VersionInfo versionInfo = null;
+				RequestInfo requestInfo = null;
 				AssetBundle manifestBundle = null;
 				return SendAssetBundleRequest(uri, ManifestVersionKey, ManifestETagKey).Select(info =>
 				{
-					versionInfo = info.ToVersionInfo();
+					requestInfo = info;
 					return info.Request;
 				}).ToAssetBundle().ContinueWith(bundle =>
 				{
@@ -40,7 +41,7 @@
 					var manifest = bundleRequest.asset as AssetBundleManifest;
 					if (manifest == null) throw new InvalidDataException("AssetBundleManifest not found.");
 					if (setRootUri ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
-					SetManifest(manifest, versionInfo);
+					SetManifest(manifest, requestInfo.Version, requestInfo.IsNew);
 					return Unit.Default;
 				}).Finally(() =>
 				{
@@ -51,11 +52,12 @@
 			});
 		}
 
-		public void SetManifest(AssetBundleManifest manifest, VersionInfo versionInfo = null) // TODO clear bundle cache?
+		void SetManifest(AssetBundleManifest manifest, int version, bool isNew) // TODO clear bundle cache?
 		{
 			if (manifest == null) throw new ArgumentNullException(nameof(manifest));
 			Manifest = manifest;
-			ManifestVersionInfo = versionInfo;
+			ManifestVersion = version;
+			ManifestIsNew = isNew;
 			MapBundleNames();
 			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
@@ -121,14 +123,14 @@
 	{
 		public static AssetBundleManifest Manifest => Instance.Manifest;
 
-		public static VersionInfo ManifestVersionInfo => Instance.ManifestVersionInfo;
+		public static int ManifestVersion => Instance.ManifestVersion;
+
+		public static bool ManifestIsNew => Instance.ManifestIsNew;
 
 		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
 
 		public static IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null) =>
 			Instance.LoadManifest(uri, setRootUri);
-
-		public static void SetManifest(AssetBundleManifest manifest) => Instance.SetManifest(manifest);
 
 		public static void UnloadManifest() => Instance.UnloadManifest();
 

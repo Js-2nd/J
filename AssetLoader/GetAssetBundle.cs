@@ -16,7 +16,7 @@ namespace J
 	{
 		static Hash128 VersionToHash(int version) => new Hash128(0, 0, 0, (uint)version);
 
-		public static IObservable<RequestVersionInfo> SendAssetBundleRequest(string uri, string versionKey, string eTagKey)
+		public static IObservable<RequestInfo> SendAssetBundleRequest(string uri, string versionKey, string eTagKey)
 		{
 			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
 			{
@@ -28,19 +28,19 @@ namespace J
 					return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
 					{
 						if (req.responseCode == 304)
-							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable()
-								.Select(r => new RequestVersionInfo(r, version, false));
+							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
+								.SendAsObservable().Select(r => new RequestInfo(r, version, false));
 						req.TryThrowError();
 						PlayerPrefs.SetInt(versionKey, version + 1);
 						PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-						var info = new RequestVersionInfo(req, version + 1, true);
-						return Observable.Return(info);
+						return Observable.Return(new RequestInfo(req, version + 1, true));
 					});
 				}
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
 				{
+					PlayerPrefs.SetInt(versionKey, version);
 					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-					return new RequestVersionInfo(req, version, true);
+					return new RequestInfo(req, version, true);
 				});
 			});
 		}
@@ -92,29 +92,15 @@ namespace J
 		}
 	}
 
-	public class RequestVersionInfo
+	public class RequestInfo
 	{
 		public UnityWebRequest Request { get; }
 		public int Version { get; }
 		public bool IsNew { get; }
 
-		public RequestVersionInfo(UnityWebRequest request, int version, bool isNew)
+		public RequestInfo(UnityWebRequest request, int version, bool isNew)
 		{
 			Request = request;
-			Version = version;
-			IsNew = isNew;
-		}
-
-		public VersionInfo ToVersionInfo() => new VersionInfo(Version, IsNew);
-	}
-
-	public class VersionInfo
-	{
-		public int Version { get; }
-		public bool IsNew { get; }
-
-		public VersionInfo(int version, bool isNew)
-		{
 			Version = version;
 			IsNew = isNew;
 		}
@@ -122,7 +108,7 @@ namespace J
 
 	partial class AssetLoader
 	{
-		public static IObservable<RequestVersionInfo>
+		public static IObservable<RequestInfo>
 			SendAssetBundleRequest(string uri, string versionKey, string eTagKey) =>
 			AssetLoaderInstance.SendAssetBundleRequest(uri, versionKey, eTagKey);
 
