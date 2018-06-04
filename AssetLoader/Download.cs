@@ -43,50 +43,43 @@ namespace J
 		public int FetchedCount;
 		public ulong FetchedTotalSize;
 
-		public IObservable<BundleDownloader> FetchSize(IProgress<float> progress = null, int maxConcurrent = 32)
+		public TaskQueue FetchSizeTask()
 		{
-			return Observable.Defer(() =>
+			var queue = new TaskQueue();
+			for (int i = 0; i < List.Count; i++)
 			{
-				var queue = new TaskQueue();
-				for (int i = 0; i < List.Count; i++)
-				{
-					var info = List[i];
-					if (info.Size == 0) queue.Add(info.FetchSize);
-				}
-				return queue.ToObservable(progress, maxConcurrent).Select(_ => this);
-			});
+				var info = List[i];
+				if (info.Size == 0) queue.Add(info.FetchSize);
+			}
+			return queue;
 		}
 
-		public IObservable<Unit> Download(IProgress<float> progress = null, int maxConcurrent = 8)
+		public TaskQueue DownloadTask()
 		{
-			return Observable.Defer(() =>
+			TaskQueue fetchQueue = null;
+			TaskQueue nonFetchQueue = null;
+			int fetched = 0;
+			ulong fetchedSize = 0;
+			for (int i = 0; i < List.Count; i++)
 			{
-				TaskQueue fetchQueue = null;
-				TaskQueue nonFetchQueue = null;
-				int fetched = 0;
-				ulong fetchedSize = 0;
-				for (int i = 0; i < List.Count; i++)
+				var info = List[i];
+				if (info.Size > 0)
 				{
-					var info = List[i];
-					if (info.Size > 0)
-					{
-						if (fetchQueue == null) fetchQueue = new TaskQueue();
-						fetchQueue.Add(info.Download, info.Size);
-						fetched++;
-						fetchedSize += info.Size;
-					}
-					else
-					{
-						if (nonFetchQueue == null) nonFetchQueue = new TaskQueue();
-						nonFetchQueue.Add(info.Download);
-					}
+					if (fetchQueue == null) fetchQueue = new TaskQueue();
+					fetchQueue.Add(info.Download, info.Size);
+					fetched++;
+					fetchedSize += info.Size;
 				}
-				var queue = new TaskQueue();
-				if (fetchQueue != null) queue.AddTaskQueue(fetchQueue);
-				if (nonFetchQueue != null) queue.AddTaskQueue(nonFetchQueue,
-					fetched > 0 ? (float?)fetchedSize * (List.Count - fetched) / fetched : null);
-				return queue.ToObservable(progress, maxConcurrent);
-			});
+				else
+				{
+					if (nonFetchQueue == null) nonFetchQueue = new TaskQueue();
+					nonFetchQueue.Add(info.Download);
+				}
+			}
+			var queue = new TaskQueue();
+			if (fetchQueue != null) queue.AddTaskQueue(fetchQueue, (float)fetched / fetchedSize);
+			if (nonFetchQueue != null) queue.AddTaskQueue(nonFetchQueue);
+			return queue;
 		}
 	}
 
