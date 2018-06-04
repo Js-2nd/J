@@ -1,4 +1,8 @@
-﻿namespace J
+﻿#if !UNITY_2018_1_OR_NEWER
+using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
+#endif
+
+namespace J
 {
 	using J.Internal;
 	using System;
@@ -110,7 +114,7 @@
 
 		public IObservable<Unit> Download(IProgress<float> progress = null)
 		{
-			return UnityWebRequest.GetAssetBundle(Downloader.RootUri + ActualName, Hash, 0)
+			return UnityWebRequestAssetBundle.GetAssetBundle(Downloader.RootUri + ActualName, Hash, 0)
 				.SendAsObservable(progress)
 				.AsUnitObservable();
 		}

@@ -1,4 +1,8 @@
-﻿namespace J
+﻿#if !UNITY_2018_1_OR_NEWER
+using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
+#endif
+
+namespace J
 {
 	using J.Internal;
 	using System;
@@ -19,12 +23,12 @@
 				int version = PlayerPrefs.GetInt(versionKey);
 				if (Caching.IsVersionCached(uri, VersionToHash(version)))
 				{
-					var request = UnityWebRequest.GetAssetBundle(uri, VersionToHash(version + 1), 0);
+					var request = UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0);
 					request.SetRequestHeader(HttpHeader.IfNoneMatch, PlayerPrefs.GetString(eTagKey));
 					return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
 					{
 						if (req.responseCode == 304)
-							return UnityWebRequest.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable()
+							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable()
 								.Select(r => new RequestVersionInfo { Request = r, Version = version, IsNew = false });
 						req.TryThrowError();
 						PlayerPrefs.SetInt(versionKey, version + 1);
@@ -33,7 +37,7 @@
 						return Observable.Return(info);
 					});
 				}
-				return UnityWebRequest.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
+				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
 				{
 					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
 					return new RequestVersionInfo { Request = req, Version = version, IsNew = true };
@@ -46,7 +50,7 @@
 		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
 		{
 			string actualBundleName = GetActualBundleName(normBundleName);
-			return UnityWebRequest.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
+			return UnityWebRequestAssetBundle.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
 		}
 
 		IObservable<AssetBundle> GetAssetBundleCore(string normBundleName, IProgress<float> progress = null)
