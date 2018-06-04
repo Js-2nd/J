@@ -20,7 +20,7 @@ namespace J
 		{
 			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
 			{
-				int version = PlayerPrefs.GetInt(versionKey);
+				int version = PlayerPrefs.GetInt(versionKey, 1);
 				if (Caching.IsVersionCached(uri, VersionToHash(version)))
 				{
 					var request = UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0);
@@ -29,18 +29,18 @@ namespace J
 					{
 						if (req.responseCode == 304)
 							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable()
-								.Select(r => new RequestVersionInfo { Request = r, Version = version, IsNew = false });
+								.Select(r => new RequestVersionInfo(r, version, false));
 						req.TryThrowError();
 						PlayerPrefs.SetInt(versionKey, version + 1);
 						PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-						var info = new RequestVersionInfo { Request = req, Version = version + 1, IsNew = true };
+						var info = new RequestVersionInfo(req, version + 1, true);
 						return Observable.Return(info);
 					});
 				}
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
 				{
 					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-					return new RequestVersionInfo { Request = req, Version = version, IsNew = true };
+					return new RequestVersionInfo(req, version, true);
 				});
 			});
 		}
@@ -94,9 +94,30 @@ namespace J
 
 	public class RequestVersionInfo
 	{
-		public UnityWebRequest Request;
-		public int Version;
-		public bool IsNew;
+		public UnityWebRequest Request { get; }
+		public int Version { get; }
+		public bool IsNew { get; }
+
+		public RequestVersionInfo(UnityWebRequest request, int version, bool isNew)
+		{
+			Request = request;
+			Version = version;
+			IsNew = isNew;
+		}
+
+		public VersionInfo ToVersionInfo() => new VersionInfo(Version, IsNew);
+	}
+
+	public class VersionInfo
+	{
+		public int Version { get; }
+		public bool IsNew { get; }
+
+		public VersionInfo(int version, bool isNew)
+		{
+			Version = version;
+			IsNew = isNew;
+		}
 	}
 
 	partial class AssetLoader
