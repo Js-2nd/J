@@ -20,27 +20,26 @@ namespace J
 		{
 			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
 			{
-				int version = PlayerPrefs.GetInt(versionKey, 1);
-				if (Caching.IsVersionCached(uri, VersionToHash(version)))
+				Func<UnityWebRequest, int, RequestInfo> saveNewVersion = (req, ver) =>
 				{
-					var request = UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0);
-					request.SetRequestHeader(HttpHeader.IfNoneMatch, PlayerPrefs.GetString(eTagKey));
-					return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
-					{
-						if (req.responseCode == 304)
-							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-								.SendAsObservable().Select(r => new RequestInfo(r, version, false));
-						req.TryThrowError();
-						PlayerPrefs.SetInt(versionKey, version + 1);
-						PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-						return Observable.Return(new RequestInfo(req, version + 1, true));
-					});
-				}
-				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0).SendAsObservable().Select(req =>
-				{
-					PlayerPrefs.SetInt(versionKey, version);
+					PlayerPrefs.SetInt(versionKey, ver);
 					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-					return new RequestInfo(req, version, true);
+					PlayerPrefs.Save();
+					return new RequestInfo(req, ver, true);
+				};
+				int version = PlayerPrefs.GetInt(versionKey, 1);
+				if (!Caching.IsVersionCached(uri, VersionToHash(version)))
+					return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
+						.SendAsObservable().Select(req => saveNewVersion(req, version));
+				var request = UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0);
+				request.SetRequestHeader(HttpHeader.IfNoneMatch, PlayerPrefs.GetString(eTagKey));
+				return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
+				{
+					if (req.responseCode == 304)
+						return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
+							.SendAsObservable().Select(oldReq => new RequestInfo(oldReq, version, false));
+					req.TryThrowError();
+					return Observable.Return(saveNewVersion(req, version + 1));
 				});
 			});
 		}
