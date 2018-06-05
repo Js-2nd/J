@@ -39,9 +39,12 @@ namespace J
 				switch (entry.LoadMethod)
 				{
 					case LoadMethod.Single:
-						return Observable.Return(AssetDatabase.LoadAssetAtPath(path, entry.AssetType), Scheduler.MainThreadIgnoreTimeScale);
+						return Observable.Return(AssetDatabase.LoadAssetAtPath(path, entry.AssetType),
+							Scheduler.MainThreadIgnoreTimeScale);
 					case LoadMethod.Multi:
-						return AssetDatabase.LoadAllAssetsAtPath(path)
+						return AssetDatabase.LoadMainAssetAtPath(path).ToSingleEnumerable()
+							.Concat(AssetDatabase.LoadAllAssetRepresentationsAtPath(path)
+								.Where(AssetDatabase.IsForeignAsset))
 							.Where(obj => entry.AssetType.IsInstanceOfType(obj))
 							.ToObservable(Scheduler.MainThreadIgnoreTimeScale);
 					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
