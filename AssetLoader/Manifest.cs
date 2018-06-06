@@ -85,6 +85,12 @@
 			trimBundleName = normBundleName;
 			return false;
 		}
+		string TrimBundleNameHash(string normBundleName)
+		{
+			string trimBundleName;
+			TrimBundleNameHash(normBundleName, out trimBundleName);
+			return trimBundleName;
+		}
 
 		public void UnloadManifest() // TODO unload bundle cache?
 		{

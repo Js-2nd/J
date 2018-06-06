@@ -80,8 +80,8 @@ namespace J
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				AssetBundle entryBundle = null;
-				var dep = Manifest.GetAllDependencies(entry.NormBundleName)
-					.Select(bundleName => GetAssetBundle(new BundleEntry(bundleName)));
+				var dep = Manifest.GetAllDependencies(GetActualBundleName(entry.NormBundleName))
+					.Select(bundleName => GetAssetBundle(new BundleEntry(TrimBundleNameHash(bundleName))));
 				return GetAssetBundle(entry)
 					.Do(bundle => entryBundle = bundle)
 					.ToSingleEnumerable().Concat(dep)
