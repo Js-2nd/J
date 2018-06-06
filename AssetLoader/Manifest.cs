@@ -7,8 +7,8 @@
 
 	partial class AssetLoaderInstance
 	{
-		const string ManifestVersionKey = "AssetLoader.ManifestVersion";
-		const string ManifestETagKey = "AssetLoader.ManifestETag";
+		public const string ManifestVersionKey = "AssetLoader.ManifestVersion";
+		public const string ManifestETagKey = "AssetLoader.ManifestETag";
 
 		public AssetBundleManifest Manifest { get; private set; }
 		public int ManifestVersion { get; private set; }
@@ -58,19 +58,20 @@
 			Manifest = manifest;
 			ManifestVersion = version;
 			ManifestIsNew = isNew;
-			MapBundleNames();
+			MapActualBundleNames();
 			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
 
-		void MapBundleNames()
+		void MapActualBundleNames()
 		{
-			m_BundleNames.Clear();
+			m_ActualBundleNames.Clear();
 			var all = Manifest.GetAllAssetBundles();
 			for (int i = 0; i < all.Length; i++)
 			{
-				string actualBundleName = all[i], trimBundleName;
+				string actualBundleName = all[i];
+				string trimBundleName;
 				if (TrimBundleNameHash(actualBundleName, out trimBundleName))
-					m_BundleNames.Add(trimBundleName, actualBundleName);
+					m_ActualBundleNames.Add(trimBundleName, actualBundleName);
 			}
 		}
 
@@ -90,14 +91,6 @@
 			string trimBundleName;
 			TrimBundleNameHash(normBundleName, out trimBundleName);
 			return trimBundleName;
-		}
-
-		public void UnloadManifest() // TODO unload bundle cache?
-		{
-			Manifest = null;
-			m_BundleNames.Clear();
-			if (m_ManifestStatus.Value == ManifestStatus.Loaded)
-				m_ManifestStatus.Value = ManifestStatus.NotLoaded;
 		}
 
 		public IObservable<Unit> WaitForManifestLoaded()
@@ -137,8 +130,6 @@
 
 		public static IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null) =>
 			Instance.LoadManifest(uri, setRootUri);
-
-		public static void UnloadManifest() => Instance.UnloadManifest();
 
 		public static IObservable<Unit> WaitForManifestLoaded() => Instance.WaitForManifestLoaded();
 	}

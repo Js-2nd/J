@@ -18,17 +18,17 @@ namespace J
 		{
 			return WaitForManifestLoaded().Select(_ =>
 			{
-				var stream = bundleNames.Select(NormBundleName).Select(GetActualBundleName);
+				var actualNames = bundleNames.Select(NormBundleName).Select(GetActualBundleName);
 				if (includeDependencies)
-					stream = stream.SelectMany(bundleName =>
-						bundleName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(bundleName)));
+					actualNames = actualNames.SelectMany(actualName =>
+						actualName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(actualName)));
 				var downloader = new BundleDownloader { RootUri = RootUri };
-				downloader.List = stream.Distinct()
-					.Select(bundleName => new BundleInfo
+				downloader.List = actualNames.Distinct()
+					.Select(actualName => new BundleInfo
 					{
 						Downloader = downloader,
-						ActualName = bundleName,
-						Hash = Manifest.GetAssetBundleHash(bundleName),
+						ActualName = actualName,
+						Hash = Manifest.GetAssetBundleHash(actualName),
 					}).Where(info => !Caching.IsVersionCached(info.ActualName, info.Hash))
 					.ToArray();
 				return downloader;

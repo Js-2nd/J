@@ -14,7 +14,7 @@
 	public sealed class AssetEntry
 	{
 		public BundleEntry BundleEntry { get; }
-		public string NormBundleName => BundleEntry.NormBundleName;
+		public string NormBundleName => BundleEntry.NormName;
 		public string AssetName { get; }
 		public Type AssetType { get; }
 		public LoadMethod LoadMethod { get; }

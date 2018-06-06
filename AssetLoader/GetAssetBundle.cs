@@ -14,7 +14,7 @@ namespace J
 
 	partial class AssetLoaderInstance
 	{
-		static Hash128 VersionToHash(int version) => new Hash128(0, 0, 0, (uint)version);
+		public static Hash128 VersionToHash(int version) => new Hash128(0, 0, 0, (uint)version);
 
 		public static IObservable<RequestInfo> SendAssetBundleRequest(string uri, string versionKey, string eTagKey)
 		{
@@ -44,34 +44,41 @@ namespace J
 			});
 		}
 
-		string GetActualBundleName(string normBundleName) => m_BundleNames.GetOrDefault(normBundleName, normBundleName);
+		string GetActualBundleName(string normBundleName) => m_ActualBundleNames.GetOrDefault(normBundleName, normBundleName);
 
-		UnityWebRequest GetAssetBundleRequest(string normBundleName, uint crc = 0)
-		{
-			string actualBundleName = GetActualBundleName(normBundleName);
-			return UnityWebRequestAssetBundle.GetAssetBundle(RootUri + actualBundleName, Manifest.GetAssetBundleHash(actualBundleName), crc);
-		}
-
-		IObservable<AssetBundle> GetAssetBundleCore(string normBundleName, IProgress<float> progress = null)
+		IObservable<AssetBundle> GetAssetBundleCore(string actualName, IProgress<float> progress = null)
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
-				GetAssetBundleRequest(normBundleName).SendAsObservable(progress).ToAssetBundle());
+			{
+				string uri = RootUri + actualName;
+				var hash = Manifest.GetAssetBundleHash(actualName);
+				return UnityWebRequestAssetBundle.GetAssetBundle(uri, hash, 0)
+					.SendAsObservable(progress).ToAssetBundle();
+			});
 		}
 
-		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
+		IObservable<AssetBundle> GetAssetBundle(string actualName)
 		{
 			return Observable.Defer(() =>
 			{
 				AsyncSubject<AssetBundle> cache;
-				if (!m_BundleCache.TryGetValue(entry, out cache))
+				if (!m_BundleCache.TryGetValue(actualName, out cache))
 				{
 					cache = new AsyncSubject<AssetBundle>();
-					m_BundleCache.Add(entry, cache);
-					GetAssetBundleCore(entry.NormBundleName)
-						.DoOnError(ex => m_BundleCache.Remove(entry))
+					m_BundleCache.Add(actualName, cache);
+					GetAssetBundleCore(actualName)
+						.DoOnError(ex => m_BundleCache.Remove(actualName))
 						.Subscribe(cache);
 				}
 				return cache;
+			});
+		}
+		public IObservable<AssetBundle> GetAssetBundle(BundleEntry entry)
+		{
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				string actualName = GetActualBundleName(entry.NormName);
+				return GetAssetBundle(actualName);
 			});
 		}
 
@@ -80,9 +87,9 @@ namespace J
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				AssetBundle entryBundle = null;
-				var dep = Manifest.GetAllDependencies(GetActualBundleName(entry.NormBundleName))
-					.Select(bundleName => GetAssetBundle(new BundleEntry(TrimBundleNameHash(bundleName))));
-				return GetAssetBundle(entry)
+				string actualName = GetActualBundleName(entry.NormName);
+				var dep = Manifest.GetAllDependencies(actualName).Select(GetAssetBundle);
+				return GetAssetBundle(actualName)
 					.Do(bundle => entryBundle = bundle)
 					.ToSingleEnumerable().Concat(dep)
 					.Merge(maxConcurrent).AsSingleUnitObservable()

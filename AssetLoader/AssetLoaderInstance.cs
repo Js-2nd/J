@@ -9,7 +9,7 @@
 	{
 		static readonly char[] Delimiters = { '/', '\\' };
 
-		public AssetSimulation SimulationMode;
+		[SerializeField] AssetSimulation m_Simulation;
 		[SerializeField] bool m_DontDestroyOnLoad;
 		public bool UnloadAssetsOnDestroy;
 		public bool AutoLoadManifest;
@@ -56,15 +56,15 @@
 		}
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
-		Dictionary<string, string> m_BundleNames;
-		Dictionary<BundleEntry, AsyncSubject<AssetBundle>> m_BundleCache;
+		Dictionary<string, string> m_ActualBundleNames;
+		Dictionary<string, AsyncSubject<AssetBundle>> m_BundleCache;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
-			m_BundleNames = new Dictionary<string, string>();
-			m_BundleCache = new Dictionary<BundleEntry, AsyncSubject<AssetBundle>>();
+			m_ActualBundleNames = new Dictionary<string, string>();
+			m_BundleCache = new Dictionary<string, AsyncSubject<AssetBundle>>();
 			UpdateLoadMethod();
 			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
 		}

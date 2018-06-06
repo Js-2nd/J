@@ -30,7 +30,7 @@
 		{
 			if (IsSimulationEnabled)
 			{
-				switch (SimulationMode)
+				switch (m_Simulation)
 				{
 					case AssetSimulation.AssetDatabase:
 						Load = AssetDatabaseLoader.Load; return;
@@ -45,7 +45,7 @@
 		{
 			get
 			{
-				switch (SimulationMode)
+				switch (m_Simulation)
 				{
 					case AssetSimulation.AssetDatabase: return AssetDatabaseLoader.IsAvailable;
 					case AssetSimulation.AssetGraph: return AssetGraphLoader.IsAvailable;
@@ -53,7 +53,6 @@
 				}
 			}
 		}
-
 	}
 
 	public enum AssetSimulation
