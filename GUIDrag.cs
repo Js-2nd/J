@@ -41,10 +41,12 @@
 					{
 						Dragged = true;
 						Rect.position = e.mousePosition - MouseOffset;
-						if (Rect.xMin < 0) Rect.x = 0;
-						else if (Rect.xMax > Screen.width) Rect.x = Screen.width - Rect.width;
-						if (Rect.yMin < 0) Rect.y = 0;
-						else if (Rect.yMax > Screen.height) Rect.y = Screen.height - Rect.height;
+						var min = GUIUtility.ScreenToGUIPoint(Vector2.zero);
+						var max = GUIUtility.ScreenToGUIPoint(new Vector2(Screen.width, Screen.height));
+						if (Rect.xMin < min.x) Rect.x = min.x;
+						else if (Rect.xMax > max.x) Rect.x = max.x - Rect.width;
+						if (Rect.yMin < min.y) Rect.y = min.y;
+						else if (Rect.yMax > max.y) Rect.y = max.y - Rect.height;
 					}
 					break;
 				case EventType.MouseUp:
