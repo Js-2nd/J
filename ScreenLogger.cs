@@ -5,20 +5,17 @@
 
 	public class ScreenLogger : SingletonMonoBehaviour<ScreenLogger>
 	{
+		public float LogExpiration = 10;
 		public int LogCapacity = 200;
-		public float AutoHideTime = 10; // TODO
-		public bool Expand; // TODO
 
 		LinkedList<Log> list;
 		Dictionary<int, LinkedListNode<Log>> dict;
-		GUIDrag drag;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			list = new LinkedList<Log>();
 			dict = new Dictionary<int, LinkedListNode<Log>>();
-			drag = new GUIDrag(0, 0, Screen.width * 0.5f, Screen.height * 0.5f); // TODO
 			Application.logMessageReceived += OnLogReceived;
 		}
 
@@ -31,7 +28,9 @@
 		int logIdCount;
 		void OnLogReceived(string message, string stackTrace, LogType type)
 		{
-			var log = new Log(++logIdCount, message, stackTrace, type);
+			var log = new Log(++logIdCount,
+				message, stackTrace, type,
+				Time.realtimeSinceStartup + LogExpiration);
 			var node = list.AddLast(log);
 			dict.Add(log.Id, node);
 			if (list.Count > LogCapacity)
@@ -47,32 +46,20 @@
 			dict.Clear();
 		}
 
-		int current;
 		void OnGUI() // TODO
 		{
-			var rect = drag.Rect;
-			rect.xMax -= 20;
-			if (list.Count > 0)
+		}
+
+		static Color LogTypeColor(LogType type)
+		{
+			switch (type)
 			{
-				current = (int)(GUI.VerticalScrollbar(new Rect(rect.xMax, rect.yMin, 20, rect.height), current, 5, list.First.Value.Id, list.Last.Value.Id) + 0.5f);
+				case LogType.Error:
+				case LogType.Assert:
+				case LogType.Exception: return Color.red;
+				case LogType.Warning: return Color.yellow;
+				default: return Color.white;
 			}
-			GUILayout.BeginArea(rect, string.Empty, "box");
-			for (var node = dict.GetOrDefault(current, list.First); node != null; node = node.Next)
-			{
-				var log = node.Value;
-				if (log.StackTrace == null)
-				{
-					GUILayout.Label(log.Message);
-				}
-				else
-				{
-					log.ShowStackTrace = GUILayout.Toggle(log.ShowStackTrace, log.Message);
-					if (log.ShowStackTrace) GUILayout.Label(log.StackTrace);
-				}
-				if (node == list.Last) break;
-			}
-			GUILayout.EndArea();
-			drag.OnGUI();
 		}
 
 		public class Log
@@ -81,16 +68,15 @@
 			public readonly string Message;
 			public readonly string StackTrace;
 			public readonly LogType Type;
-			public readonly float Timestamp;
-			public bool ShowStackTrace;
+			public readonly float Expiration;
 
-			public Log(int id, string message, string stackTrace, LogType type)
+			public Log(int id, string message, string stackTrace, LogType type, float expiration)
 			{
 				Id = id;
 				Message = $"<{Id}> {message}";
 				StackTrace = !string.IsNullOrWhiteSpace(stackTrace) ? stackTrace : null;
 				Type = type;
-				Timestamp = Time.realtimeSinceStartup;
+				Expiration = expiration;
 			}
 		}
 	}
