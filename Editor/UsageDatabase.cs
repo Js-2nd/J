@@ -9,9 +9,11 @@
 	public class UsageDatabase : ScriptableObject
 	{
 		const string ClassName = nameof(UsageDatabase);
+		const string AssetPath = "ProjectSettings/" + ClassName + ".asset";
 
 		static UsageDatabase Instance;
 
+		[MenuItem("Assets/Load Usage")]
 		public static UsageDatabase Load()
 		{
 			if (Instance == null)
@@ -53,12 +55,7 @@
 			var allPaths = AssetDatabase.GetAllAssetPaths();
 			for (int i = 0, iCount = allPaths.Length; i < iCount; i++)
 			{
-				const string title = "Creating " + ClassName;
-				if ((i & 31) == 0 && DisplayProgress(title, i, iCount))
-				{
-					EditorUtility.ClearProgressBar();
-					return false;
-				}
+				if (CancelableProgress("Creating " + ClassName, i + 1, iCount)) return false;
 				string refPath = allPaths[i];
 				if (!refPath.StartsWith("Assets/")) continue;
 				string refGUID = AssetDatabase.AssetPathToGUID(refPath);
@@ -78,12 +75,7 @@
 			References = new Dictionary<string, HashSet<string>>();
 			for (int i = 0, iCount = Entries.Count; i < iCount; i++)
 			{
-				const string title = "Loading " + ClassName;
-				if ((i & 31) == 0 && DisplayProgress(title, i, iCount))
-				{
-					EditorUtility.ClearProgressBar();
-					return false;
-				}
+				if (CancelableProgress("Loading " + ClassName, i + 1, iCount)) return false;
 				string refer = Entries[i].Reference;
 				var depend = Entries[i].Dependencies;
 				for (int j = 0, jCount = depend.Count; j < jCount; j++)
@@ -99,12 +91,7 @@
 			int i = 0, iCount = Dependencies.Count;
 			foreach (var item in Dependencies)
 			{
-				const string title = "Writing " + ClassName;
-				if ((i & 31) == 0 && DisplayProgress(title, i, iCount))
-				{
-					EditorUtility.ClearProgressBar();
-					return false;
-				}
+				if (CancelableProgress("Writing " + ClassName, i + 1, iCount)) return false;
 				if (item.Value.Count > 0) Entries.Add(new Entry(item.Key, item.Value.ToList()));
 				i++;
 			}
@@ -123,9 +110,15 @@
 			References.GetOrDefault(dependency)?.Remove(reference);
 		}
 
-		static bool DisplayProgress(string title, int i, int count)
+		static bool CancelableProgress(string title, int nth, int count)
 		{
-			return EditorUtility.DisplayCancelableProgressBar(title, $"{i + 1}/{count}", (float)i / count);
+			if (nth == count) EditorUtility.ClearProgressBar();
+			else if ((nth & 31) == 1 && EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
+			{
+				EditorUtility.ClearProgressBar();
+				return true;
+			}
+			return false;
 		}
 
 		[Serializable]
@@ -135,7 +128,6 @@
 			public List<string> Dependencies;
 
 			public Entry() { }
-
 			public Entry(string reference, List<string> dependencies)
 			{
 				Reference = reference;
