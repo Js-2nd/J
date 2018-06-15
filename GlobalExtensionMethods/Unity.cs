@@ -9,13 +9,6 @@ public static partial class GlobalExtensionMethods
 		return gameObject.AddComponent<T>();
 	}
 
-	public static T GetOrAddComponent<T>(this Component component) where T : Component => component.gameObject.GetOrAddComponent<T>();
-
-	public static void Clear(this RenderTexture rt)
-	{
-		var last = RenderTexture.active;
-		RenderTexture.active = rt;
-		GL.Clear(true, true, Color.clear);
-		RenderTexture.active = last;
-	}
+	public static T GetOrAddComponent<T>(this Component component) where T : Component =>
+		component.gameObject.GetOrAddComponent<T>();
 }
