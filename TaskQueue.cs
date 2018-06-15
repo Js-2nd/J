@@ -102,22 +102,28 @@ namespace J
 			queue.Enqueue(pairs);
 		}
 
-		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 8)
+		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 8,
+			Action<Exception> ignoreError = null) => Observable.Defer(() =>
 		{
-			return Observable.Defer(() =>
+			var dividableProgress = progress.ToDividableProgress();
+			bool hasProgress = dividableProgress != null;
+			IEnumerable<IObservable<Unit>> all;
+			if (hasProgress)
 			{
-				var dividableProgress = progress.ToDividableProgress();
-				if (dividableProgress == null)
-					return All.Select(pair => pair.Key(null))
-						.Merge(maxConcurrent)
-						.AsSingleUnitObservable();
 				float total = All.Aggregate(0f, (sum, pair) => sum + pair.Weight());
-				return All.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)))
-					.Merge(maxConcurrent)
-					.ReportOnCompleted(dividableProgress)
-					.AsSingleUnitObservable();
-			});
-		}
+				all = All.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)));
+			}
+			else
+			{
+				all = All.Select(pair => pair.Key(null));
+			}
+			if (ignoreError != null)
+				all = all.Select(source => source.CatchIgnore(ignoreError));
+			var merge = all.Merge(maxConcurrent);
+			if (hasProgress)
+				merge = merge.ReportOnCompleted(dividableProgress);
+			return merge.AsSingleUnitObservable();
+		});
 	}
 
 	namespace Internal
