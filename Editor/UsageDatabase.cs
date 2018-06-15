@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.IO;
 	using System.Linq;
 	using UnityEditor;
 	using UnityEngine;
@@ -18,25 +19,24 @@
 		{
 			if (Instance == null)
 			{
-				var temp = CreateInstance<UsageDatabase>();
-				string path = AssetDatabase.GetAssetPath(MonoScript.FromScriptableObject(temp));
-				path = path.Substring(0, path.Length - 2) + "asset";
-				Instance = AssetDatabase.LoadAssetAtPath<UsageDatabase>(path);
-				if (Instance == null)
+				Instance = CreateInstance<UsageDatabase>();
+				if (File.Exists(AssetPath))
 				{
-					Instance = temp;
+					EditorJsonUtility.FromJsonOverwrite(File.ReadAllText(AssetPath), Instance);
+					if (!Instance.OnLoad()) // TODO
+					{
+						Instance = null;
+					}
+				}
+				else
+				{
 					if (!Instance.OnCreate()) // TODO
 					{
 						Instance = null;
 					}
-					AssetDatabase.CreateAsset(Instance, path);
-				}
-				else
-				{
-					DestroyImmediate(temp);
-					if (!Instance.OnLoad()) // TODO
+					else
 					{
-						Instance = null;
+						File.WriteAllText(AssetPath, EditorJsonUtility.ToJson(Instance));
 					}
 				}
 			}
