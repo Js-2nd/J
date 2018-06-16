@@ -5,43 +5,91 @@
 	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
+	using UniRx;
 	using UnityEditor;
 	using UnityEngine;
 
-	[Serializable]
-	public sealed class UsageDatabase
+	public static class UsageDatabase
 	{
 		const string ClassName = nameof(UsageDatabase);
 		const string AssetRoot = "Assets/";
 
-		static UsageDatabase Instance;
-
-		[MenuItem("Assets/Load " + ClassName)]
-		public static UsageDatabase Load()
+		public static readonly string DataPath = GetDataPath(true);
+		static string GetDataPath(bool relative = false)
 		{
-			if (Instance != null) return Instance;
-			var instance = new UsageDatabase();
-			string path = GetDatabasePath();
-			if (File.Exists(path))
+			string dataPath = Path.ChangeExtension(CallerInfo.FilePath(), "bytes");
+			if (relative)
 			{
-				EditorJsonUtility.FromJsonOverwrite(File.ReadAllText(path), instance);
-				if (instance.OnLoad()) return Instance = instance;
+				string cwd = Directory.GetCurrentDirectory();
+				cwd = cwd.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+				cwd += Path.DirectorySeparatorChar;
+				dataPath = new Uri(cwd).MakeRelativeUri(new Uri(dataPath)).ToString();
 			}
-			else if (instance.OnCreate())
-			{
-				File.WriteAllText(path, EditorJsonUtility.ToJson(instance));
-				return Instance = instance;
-			}
-			return null;
+			return dataPath;
 		}
 
-		static string GetDatabasePath()
+		static bool Initialized;
+		static bool Init()
 		{
-			string cwd = Directory.GetCurrentDirectory();
-			cwd = cwd.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-			cwd += Path.DirectorySeparatorChar;
-			string file = Path.ChangeExtension(CallerInfo.FilePath(), "bytes");
-			return new Uri(cwd).MakeRelativeUri(new Uri(file)).ToString();
+			if (Initialized) return true;
+			bool hasData = File.Exists(DataPath);
+			return Initialized = !hasData && Create() && Save() || hasData && Load();
+		}
+
+		[MenuItem("Assets/Refresh " + ClassName)]
+		static bool ForceInit() => Initialized = Create() && Save();
+
+		static readonly IReadOnlyCollection<string> Empty = new string[0].AsReadOnly();
+
+		static readonly Dictionary<string, HashSet<string>> RefToDep = new Dictionary<string, HashSet<string>>();
+		static IReadOnlyCollection<string> GetDep(string refGUID) => RefToDep.GetOrDefault(refGUID) ?? Empty;
+
+		static readonly Dictionary<string, HashSet<string>> DepToRef = new Dictionary<string, HashSet<string>>();
+		static IReadOnlyCollection<string> GetRef(string depGUID) => DepToRef.GetOrDefault(depGUID) ?? Empty;
+
+		static bool Create()
+		{
+			RefToDep.Clear();
+			DepToRef.Clear();
+			var refPaths = AssetDatabase.GetAllAssetPaths();
+			for (int i = 0, iCount = refPaths.Length; i < iCount; i++)
+			{
+				if (CancelableProgress("Creating " + ClassName, i + 1, iCount)) return false;
+				AddRef(refPaths[i]);
+			}
+			return true;
+		}
+
+		static bool Save()
+		{
+			var data = new Data();
+			var list = data.L;
+			int i = 0, iCount = RefToDep.Count;
+			foreach (var item in RefToDep)
+			{
+				if (CancelableProgress("Writing " + ClassName, i + 1, iCount)) return false;
+				if (item.Value.Count > 0) list.Add(new Entry(item.Key, item.Value.ToList()));
+				i++;
+			}
+			File.WriteAllText(DataPath, EditorJsonUtility.ToJson(data));
+			return true;
+		}
+
+		static bool Load()
+		{
+			var data = new Data();
+			EditorJsonUtility.FromJsonOverwrite(File.ReadAllText(DataPath), data);
+			var list = data.L;
+			RefToDep.Clear();
+			DepToRef.Clear();
+			for (int i = 0, iCount = list.Count; i < iCount; i++)
+			{
+				if (CancelableProgress("Loading " + ClassName, i + 1, iCount)) return false;
+				string refGUID = list[i].R;
+				var depGUIDs = list[i].D;
+				for (int j = 0, jCount = depGUIDs.Count; j < jCount; j++) AddPair(refGUID, depGUIDs[j]);
+			}
+			return true;
 		}
 
 		static bool CancelableProgress(string title, int nth, int count)
@@ -59,84 +107,99 @@
 			return false;
 		}
 
-		UsageDatabase() { }
-
-		[SerializeField] List<Entry> Entries;
-		[NonSerialized] Dictionary<string, HashSet<string>> Dependencies;
-		[NonSerialized] Dictionary<string, HashSet<string>> References;
-
-		bool OnCreate()
+		static void AddRef(string refPath, string refGUID = null)
 		{
-			Dependencies = new Dictionary<string, HashSet<string>>();
-			References = new Dictionary<string, HashSet<string>>();
-			var allPaths = AssetDatabase.GetAllAssetPaths();
-			for (int i = 0, iCount = allPaths.Length; i < iCount; i++)
+			if (!refPath.StartsWith(AssetRoot)) return;
+			if (refGUID == null) refGUID = AssetDatabase.AssetPathToGUID(refPath);
+			var depPaths = AssetDatabase.GetDependencies(refPath, false);
+			for (int i = 0, iCount = depPaths.Length; i < iCount; i++)
 			{
-				if (CancelableProgress("Creating " + ClassName, i + 1, iCount)) return false;
-				string refPath = allPaths[i];
-				if (!refPath.StartsWith(AssetRoot)) continue;
-				string refGUID = AssetDatabase.AssetPathToGUID(refPath);
-				foreach (string depPath in AssetDatabase.GetDependencies(refPath, false))
-				{
-					if (depPath == refPath || !depPath.StartsWith(AssetRoot)) continue;
-					string depGUID = AssetDatabase.AssetPathToGUID(depPath);
-					Add(refGUID, depGUID);
-				}
+				string depPath = depPaths[i];
+				if (depPath == refPath || !depPath.StartsWith(AssetRoot)) continue;
+				string depGUID = AssetDatabase.AssetPathToGUID(depPath);
+				AddPair(refGUID, depGUID);
 			}
-			return WriteEntries();
 		}
 
-		bool OnLoad()
+		static void AddPair(string refGUID, string depGUID)
 		{
-			Dependencies = new Dictionary<string, HashSet<string>>();
-			References = new Dictionary<string, HashSet<string>>();
-			for (int i = 0, iCount = Entries.Count; i < iCount; i++)
-			{
-				if (CancelableProgress("Loading " + ClassName, i + 1, iCount)) return false;
-				string refer = Entries[i].Reference;
-				var depend = Entries[i].Dependencies;
-				for (int j = 0, jCount = depend.Count; j < jCount; j++) Add(refer, depend[j]);
-			}
-			return true;
+			RefToDep.GetOrAdd(refGUID, _ => new HashSet<string>()).Add(depGUID);
+			DepToRef.GetOrAdd(depGUID, _ => new HashSet<string>()).Add(refGUID);
 		}
 
-		bool WriteEntries()
+		static void RemoveRef(string refGUID)
 		{
-			if (Entries != null) Entries.Clear();
-			else Entries = new List<Entry>();
-			int i = 0, iCount = Dependencies.Count;
-			foreach (var item in Dependencies)
-			{
-				if (CancelableProgress("Writing " + ClassName, i + 1, iCount)) return false;
-				if (item.Value.Count > 0) Entries.Add(new Entry(item.Key, item.Value.ToList()));
-				i++;
-			}
-			return true;
+			var depGUIDs = RefToDep.GetOrDefault(refGUID);
+			if (depGUIDs == null) return;
+			foreach (string depGUID in depGUIDs)
+				DepToRef.GetOrDefault(depGUID)?.Remove(refGUID);
+			depGUIDs.Clear();
 		}
 
-		void Add(string reference, string dependency)
+		static void RemovePair(string refGUID, string depGUID)
 		{
-			Dependencies.GetOrAdd(reference, _ => new HashSet<string>()).Add(dependency);
-			References.GetOrAdd(dependency, _ => new HashSet<string>()).Add(reference);
+			RefToDep.GetOrDefault(refGUID)?.Remove(depGUID);
+			DepToRef.GetOrDefault(depGUID)?.Remove(refGUID);
 		}
 
-		void Remove(string reference, string dependency)
+		[MenuItem("Assets/Find Usages")]
+		static void FindUsages()
 		{
-			Dependencies.GetOrDefault(reference)?.Remove(dependency);
-			References.GetOrDefault(dependency)?.Remove(reference);
+			if (!Init()) return;
+			var refPaths = Selection.assetGUIDs.SelectMany(GetRef)
+				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
+			foreach (string refPath in refPaths)
+				Debug.Log(refPath, AssetDatabase.LoadMainAssetAtPath(refPath));
 		}
 
 		[Serializable]
-		public class Entry
+		internal class Data
 		{
-			public string Reference;
-			public List<string> Dependencies;
+			public List<Entry> L = new List<Entry>();
+		}
+
+		[Serializable]
+		internal class Entry
+		{
+			public string R;
+			public List<string> D;
 
 			public Entry() { }
-			public Entry(string reference, List<string> dependencies)
+			public Entry(string refGUID, List<string> depGUIDs)
 			{
-				Reference = reference;
-				Dependencies = dependencies;
+				R = refGUID;
+				D = depGUIDs;
+			}
+		}
+
+		class ModificationProcessor : AssetModificationProcessor
+		{
+			static string[] OnWillSaveAssets(string[] paths)
+			{
+				MainThreadDispatcher.Post(obj =>
+				{
+					var refPaths = obj as string[];
+					if (refPaths == null || !Initialized) return;
+					for (int i = 0, iCount = refPaths.Length; i < iCount; i++)
+					{
+						string refPath = refPaths[i];
+						string refGUID = AssetDatabase.AssetPathToGUID(refPath);
+						Debug.Log($"{refPath} {refGUID} {AssetDatabase.GetDependencies(refPath, false).Length}");
+						RemoveRef(refGUID);
+						AddRef(refPath, refGUID);
+					}
+					if (!Save()) Initialized = false;
+				}, paths);
+				return paths;
+			}
+
+			static AssetDeleteResult OnWillDeleteAsset(string assetPath, RemoveAssetOptions options)
+			{
+				MainThreadDispatcher.Post(obj =>
+				{
+					string path = obj as string;
+				}, assetPath);
+				return AssetDeleteResult.DidNotDelete;
 			}
 		}
 	}
