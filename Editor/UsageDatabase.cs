@@ -1,5 +1,6 @@
 ﻿namespace J
 {
+	using J.Internal;
 	using System;
 	using System.Collections.Generic;
 	using System.IO;
@@ -7,46 +8,62 @@
 	using UnityEditor;
 	using UnityEngine;
 
-	public class UsageDatabase : ScriptableObject
+	[Serializable]
+	public sealed class UsageDatabase
 	{
 		const string ClassName = nameof(UsageDatabase);
-		const string AssetPath = "ProjectSettings/" + ClassName + ".asset";
+		const string AssetRoot = "Assets/";
 
 		static UsageDatabase Instance;
 
-		[MenuItem("Assets/Load Usage")]
+		[MenuItem("Assets/Load " + ClassName)]
 		public static UsageDatabase Load()
 		{
-			if (Instance == null)
+			if (Instance != null) return Instance;
+			var instance = new UsageDatabase();
+			string path = GetDatabasePath();
+			if (File.Exists(path))
 			{
-				Instance = CreateInstance<UsageDatabase>();
-				if (File.Exists(AssetPath))
-				{
-					EditorJsonUtility.FromJsonOverwrite(File.ReadAllText(AssetPath), Instance);
-					if (!Instance.OnLoad()) // TODO
-					{
-						Instance = null;
-					}
-				}
-				else
-				{
-					if (!Instance.OnCreate()) // TODO
-					{
-						Instance = null;
-					}
-					else
-					{
-						File.WriteAllText(AssetPath, EditorJsonUtility.ToJson(Instance));
-					}
-				}
+				EditorJsonUtility.FromJsonOverwrite(File.ReadAllText(path), instance);
+				if (instance.OnLoad()) return Instance = instance;
 			}
-			return Instance;
+			else if (instance.OnCreate())
+			{
+				File.WriteAllText(path, EditorJsonUtility.ToJson(instance));
+				return Instance = instance;
+			}
+			return null;
 		}
 
-		[SerializeField] List<Entry> Entries;
+		static string GetDatabasePath()
+		{
+			string cwd = Directory.GetCurrentDirectory();
+			cwd = cwd.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+			cwd += Path.DirectorySeparatorChar;
+			string file = Path.ChangeExtension(CallerInfo.FilePath(), "bytes");
+			return new Uri(cwd).MakeRelativeUri(new Uri(file)).ToString();
+		}
 
-		Dictionary<string, HashSet<string>> Dependencies;
-		Dictionary<string, HashSet<string>> References;
+		static bool CancelableProgress(string title, int nth, int count)
+		{
+			if (nth == count)
+			{
+				EditorUtility.ClearProgressBar();
+				return false;
+			}
+			if ((nth & 63) == 1 && EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
+			{
+				EditorUtility.ClearProgressBar();
+				return true;
+			}
+			return false;
+		}
+
+		UsageDatabase() { }
+
+		[SerializeField] List<Entry> Entries;
+		[NonSerialized] Dictionary<string, HashSet<string>> Dependencies;
+		[NonSerialized] Dictionary<string, HashSet<string>> References;
 
 		bool OnCreate()
 		{
@@ -57,11 +74,11 @@
 			{
 				if (CancelableProgress("Creating " + ClassName, i + 1, iCount)) return false;
 				string refPath = allPaths[i];
-				if (!refPath.StartsWith("Assets/")) continue;
+				if (!refPath.StartsWith(AssetRoot)) continue;
 				string refGUID = AssetDatabase.AssetPathToGUID(refPath);
 				foreach (string depPath in AssetDatabase.GetDependencies(refPath, false))
 				{
-					if (depPath == refPath || !depPath.StartsWith("Assets/")) continue;
+					if (depPath == refPath || !depPath.StartsWith(AssetRoot)) continue;
 					string depGUID = AssetDatabase.AssetPathToGUID(depPath);
 					Add(refGUID, depGUID);
 				}
@@ -78,8 +95,7 @@
 				if (CancelableProgress("Loading " + ClassName, i + 1, iCount)) return false;
 				string refer = Entries[i].Reference;
 				var depend = Entries[i].Dependencies;
-				for (int j = 0, jCount = depend.Count; j < jCount; j++)
-					Add(refer, depend[j]);
+				for (int j = 0, jCount = depend.Count; j < jCount; j++) Add(refer, depend[j]);
 			}
 			return true;
 		}
@@ -108,17 +124,6 @@
 		{
 			Dependencies.GetOrDefault(reference)?.Remove(dependency);
 			References.GetOrDefault(dependency)?.Remove(reference);
-		}
-
-		static bool CancelableProgress(string title, int nth, int count)
-		{
-			if (nth == count) EditorUtility.ClearProgressBar();
-			else if ((nth & 31) == 1 && EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
-			{
-				EditorUtility.ClearProgressBar();
-				return true;
-			}
-			return false;
 		}
 
 		[Serializable]
