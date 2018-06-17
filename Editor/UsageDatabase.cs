@@ -70,6 +70,24 @@
 			RefToDepDict.GetOrDefault(refGUID)?.Remove(depGUID);
 			DepToRefDict.GetOrDefault(depGUID)?.Remove(refGUID);
 		}
+
+		//IEnumerable<string> FindRef(IEnumerable<string> depGUIDs) => depGUIDs.SelectMany(DepToRef).Distinct();
+		//IEnumerable<string> FindRefRecursive(IEnumerable<string> depGUIDs)
+		//{
+		//	var depSet = new HashSet<string>();
+		//	var refSet = new HashSet<string>();
+		//	var queue = new Queue<string>(depGUIDs);
+		//	while (queue.Count > 0)
+		//	{
+		//		string depGUID = queue.Dequeue();
+		//		if (depSet.Add(depGUID))
+		//		{
+		//			foreach (string refGUID in DepToRef(depGUID))
+		//			{
+		//			}
+		//		}
+		//	}
+		//}
 	}
 
 	public partial class UsageDatabase
