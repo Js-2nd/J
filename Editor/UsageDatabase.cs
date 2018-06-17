@@ -71,23 +71,25 @@
 			DepToRefDict.GetOrDefault(depGUID)?.Remove(refGUID);
 		}
 
-		//IEnumerable<string> FindRef(IEnumerable<string> depGUIDs) => depGUIDs.SelectMany(DepToRef).Distinct();
-		//IEnumerable<string> FindRefRecursive(IEnumerable<string> depGUIDs)
-		//{
-		//	var depSet = new HashSet<string>();
-		//	var refSet = new HashSet<string>();
-		//	var queue = new Queue<string>(depGUIDs);
-		//	while (queue.Count > 0)
-		//	{
-		//		string depGUID = queue.Dequeue();
-		//		if (depSet.Add(depGUID))
-		//		{
-		//			foreach (string refGUID in DepToRef(depGUID))
-		//			{
-		//			}
-		//		}
-		//	}
-		//}
+		IEnumerable<string> FindRef(IEnumerable<string> ids) => ids.SelectMany(DepToRef).Distinct();
+		IEnumerable<string> FindRefRecursive(IEnumerable<string> ids)
+		{
+			var origin = new HashSet<string>(ids);
+			var result = new HashSet<string>();
+			var queue = new Queue<string>(origin);
+			while (queue.Count > 0)
+			{
+				foreach (string id in DepToRef(queue.Dequeue()))
+				{
+					if (result.Add(id))
+					{
+						if (!origin.Contains(id))
+							queue.Enqueue(id);
+						yield return id;
+					}
+				}
+			}
+		}
 	}
 
 	public partial class UsageDatabase
