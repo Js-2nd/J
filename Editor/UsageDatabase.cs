@@ -75,6 +75,7 @@
 	public partial class UsageDatabase
 	{
 		const string ClassName = nameof(UsageDatabase);
+		const string MenuRoot = "Assets/Usage/";
 		const string AssetRoot = "Assets/";
 
 		static readonly IReadOnlyCollection<string> Empty = new string[0].AsReadOnly();
@@ -104,7 +105,47 @@
 			return Instance;
 		}
 
-		[MenuItem("Assets/Refresh " + ClassName)]
+		[MenuItem(MenuRoot + "Find References")]
+		static void FindRef()
+		{
+			if (!Init(true)) return;
+			var refPaths = Selection.assetGUIDs.SelectMany(Instance.DepToRef)
+				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
+			int count = 0;
+			foreach (string refPath in refPaths)
+			{
+				++count;
+				Debug.Log(refPath, AssetDatabase.LoadMainAssetAtPath(refPath));
+			}
+			switch (count)
+			{
+				case 0: Debug.Log("No references found."); break;
+				case 1: Debug.Log("1 reference found."); break;
+				default: Debug.Log($"{count} references found."); break;
+			}
+		}
+
+		[MenuItem(MenuRoot + "Find Dependencies")]
+		static void FindDep()
+		{
+			if (!Init(true)) return;
+			var depPaths = Selection.assetGUIDs.SelectMany(Instance.RefToDep)
+				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
+			int count = 0;
+			foreach (string depPath in depPaths)
+			{
+				++count;
+				Debug.Log(depPath, AssetDatabase.LoadMainAssetAtPath(depPath));
+			}
+			switch (count)
+			{
+				case 0: Debug.Log("No dependencies found."); break;
+				case 1: Debug.Log("1 dependency found."); break;
+				default: Debug.Log($"{count} dependencies found."); break;
+			}
+		}
+
+		[MenuItem(MenuRoot + "Refresh")]
 		static void Create()
 		{
 			Delete();
@@ -157,26 +198,6 @@
 			return false;
 		}
 
-		[MenuItem("Assets/Find References")]
-		static void FindRef()
-		{
-			if (!Init(true)) return;
-			var refPaths = Selection.assetGUIDs.SelectMany(Instance.DepToRef)
-				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
-			foreach (string refPath in refPaths)
-				Debug.Log(refPath, AssetDatabase.LoadMainAssetAtPath(refPath));
-		}
-
-		[MenuItem("Assets/Find Dependencies")]
-		static void FindDep()
-		{
-			if (!Init(true)) return;
-			var depPaths = Selection.assetGUIDs.SelectMany(Instance.RefToDep)
-				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
-			foreach (string depPath in depPaths)
-				Debug.Log(depPath, AssetDatabase.LoadMainAssetAtPath(depPath));
-		}
-
 		[Serializable]
 		class Entry
 		{
@@ -207,7 +228,6 @@
 					foreach (string refPath in refPaths)
 					{
 						string refGUID = AssetDatabase.AssetPathToGUID(refPath);
-						Debug.Log($"{refPath} {AssetDatabase.GetDependencies(refPath, false).Length}");
 						Instance.RemoveRef(refGUID);
 						Instance.AddRef(refPath, refGUID);
 					}
