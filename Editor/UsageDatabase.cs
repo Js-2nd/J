@@ -11,92 +11,72 @@
 
 	public partial class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
 	{
-		[SerializeField] List<Entry> Entries = new List<Entry>();
-		Dictionary<string, HashSet<string>> RefToDepDict = new Dictionary<string, HashSet<string>>();
-		Dictionary<string, HashSet<string>> DepToRefDict = new Dictionary<string, HashSet<string>>();
-
-		IReadOnlyCollection<string> RefToDep(string refGUID) => RefToDepDict.GetOrDefault(refGUID) ?? Empty;
-		IReadOnlyCollection<string> DepToRef(string depGUID) => DepToRefDict.GetOrDefault(depGUID) ?? Empty;
+		[SerializeField] List<Item> Data = new List<Item>();
+		Dictionary<string, HashSet<string>> ReferDict = new Dictionary<string, HashSet<string>>();
+		Dictionary<string, HashSet<string>> DependDict = new Dictionary<string, HashSet<string>>();
 
 		void ISerializationCallbackReceiver.OnBeforeSerialize()
 		{
-			Entries.Clear();
-			foreach (var item in RefToDepDict)
+			Data.Clear();
+			foreach (var item in DependDict)
 				if (item.Value.Count > 0)
-					Entries.Add(new Entry(item.Key, item.Value.ToList()));
+					Data.Add(new Item(item.Key, item.Value.ToList()));
 		}
 
 		void ISerializationCallbackReceiver.OnAfterDeserialize()
 		{
-			RefToDepDict.Clear();
-			DepToRefDict.Clear();
-			foreach (var entry in Entries)
+			ReferDict.Clear();
+			DependDict.Clear();
+			foreach (var item in Data)
+				foreach (string dependId in item.DependIds)
+					AddPair(item.Id, dependId);
+		}
+
+		void AddRefer(string path, string id = null)
+		{
+			if (!path.StartsWith("Assets/")) return;
+			if (id == null) id = AssetDatabase.AssetPathToGUID(path);
+			foreach (string dependPath in AssetDatabase.GetDependencies(path, false))
 			{
-				string refGUID = entry.RefGUID;
-				foreach (string depGUID in entry.DepGUIDs)
-					AddPair(refGUID, depGUID);
+				if (dependPath == path || !dependPath.StartsWith("Assets/")) continue;
+				AddPair(id, AssetDatabase.AssetPathToGUID(dependPath));
 			}
 		}
 
-		void AddRef(string refPath, string refGUID = null)
+		void AddPair(string referId, string dependId)
 		{
-			if (!refPath.StartsWith(AssetRoot)) return;
-			if (refGUID == null) refGUID = AssetDatabase.AssetPathToGUID(refPath);
-			foreach (string depPath in AssetDatabase.GetDependencies(refPath, false))
-			{
-				if (depPath == refPath || !depPath.StartsWith(AssetRoot)) continue;
-				string depGUID = AssetDatabase.AssetPathToGUID(depPath);
-				AddPair(refGUID, depGUID);
-			}
+			ReferDict.GetOrAdd(dependId, _ => new HashSet<string>()).Add(referId);
+			DependDict.GetOrAdd(referId, _ => new HashSet<string>()).Add(dependId);
 		}
 
-		void AddPair(string refGUID, string depGUID)
+		void RemoveRefer(string id)
 		{
-			RefToDepDict.GetOrAdd(refGUID, _ => new HashSet<string>()).Add(depGUID);
-			DepToRefDict.GetOrAdd(depGUID, _ => new HashSet<string>()).Add(refGUID);
+			var dependIds = DependDict.GetOrDefault(id);
+			if (dependIds == null) return;
+			foreach (string dependId in dependIds)
+				ReferDict.GetOrDefault(dependId)?.Remove(id);
+			dependIds.Clear();
 		}
 
-		void RemoveRef(string refGUID)
+		void RemovePair(string referId, string dependId)
 		{
-			var depGUIDs = RefToDepDict.GetOrDefault(refGUID);
-			if (depGUIDs == null) return;
-			foreach (string depGUID in depGUIDs)
-				DepToRefDict.GetOrDefault(depGUID)?.Remove(refGUID);
-			depGUIDs.Clear();
+			ReferDict.GetOrDefault(dependId)?.Remove(referId);
+			DependDict.GetOrDefault(referId)?.Remove(dependId);
 		}
 
-		void RemovePair(string refGUID, string depGUID)
-		{
-			RefToDepDict.GetOrDefault(refGUID)?.Remove(depGUID);
-			DepToRefDict.GetOrDefault(depGUID)?.Remove(refGUID);
-		}
+		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
+		public IEnumerable<string> GetReferIds(IEnumerable<string> ids, bool recursive = false) =>
+			recursive ? BreadthFirstSearch(ids, GetReferIds) : ids.SelectMany(GetReferIds).Distinct();
 
-		IEnumerable<string> FindRef(IEnumerable<string> ids) => ids.SelectMany(DepToRef).Distinct();
-		IEnumerable<string> FindRefRecursive(IEnumerable<string> ids)
-		{
-			var origin = new HashSet<string>(ids);
-			var result = new HashSet<string>();
-			var queue = new Queue<string>(origin);
-			while (queue.Count > 0)
-			{
-				foreach (string id in DepToRef(queue.Dequeue()))
-				{
-					if (result.Add(id))
-					{
-						if (!origin.Contains(id))
-							queue.Enqueue(id);
-						yield return id;
-					}
-				}
-			}
-		}
+		public IReadOnlyCollection<string> GetDependIds(string id) => DependDict.GetOrDefault(id) ?? Empty;
+		public IEnumerable<string> GetDependIds(IEnumerable<string> ids, bool recursive = false) =>
+			recursive ? BreadthFirstSearch(ids, GetDependIds) : ids.SelectMany(GetDependIds).Distinct();
 	}
 
-	public partial class UsageDatabase
+	partial class UsageDatabase
 	{
 		const string ClassName = nameof(UsageDatabase);
-		const string MenuRoot = "Assets/Usage/";
-		const string AssetRoot = "Assets/";
+		const string MenuRoot = "Assets/" + ClassName + "/";
 
 		static readonly IReadOnlyCollection<string> Empty = new string[0].AsReadOnly();
 
@@ -115,120 +95,132 @@
 		}
 
 		static UsageDatabase Instance;
-		static UsageDatabase Init(bool create)
+		public static UsageDatabase Init(bool create = false)
 		{
 			if (Instance == null)
 			{
-				Load();
+				Instance = AssetDatabase.LoadAssetAtPath<UsageDatabase>(DataPath);
 				if (Instance == null && create) Create();
 			}
 			return Instance;
 		}
 
 		[MenuItem(MenuRoot + "Find References")]
-		static void FindRef()
+		static void FindRefer()
 		{
-			if (!Init(true)) return;
-			var refPaths = Selection.assetGUIDs.SelectMany(Instance.DepToRef)
-				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
-			int count = 0;
-			foreach (string refPath in refPaths)
-			{
-				++count;
-				Debug.Log(refPath, AssetDatabase.LoadMainAssetAtPath(refPath));
-			}
-			switch (count)
-			{
-				case 0: Debug.Log("No references found."); break;
-				case 1: Debug.Log("1 reference found."); break;
-				default: Debug.Log($"{count} references found."); break;
-			}
+			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs), "reference", "references");
+		}
+		[MenuItem(MenuRoot + "Find References (Recursive)")]
+		static void FindReferRecursive()
+		{
+			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs, true), "reference", "references");
 		}
 
 		[MenuItem(MenuRoot + "Find Dependencies")]
-		static void FindDep()
+		static void FindDepend()
 		{
-			if (!Init(true)) return;
-			var depPaths = Selection.assetGUIDs.SelectMany(Instance.RefToDep)
-				.Distinct().Select(AssetDatabase.GUIDToAssetPath);
+			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs), "dependency", "dependencies");
+		}
+		[MenuItem(MenuRoot + "Find Dependencies (Recursive)")]
+		static void FindDependRecursive()
+		{
+			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs, true), "dependency", "dependencies");
+		}
+
+		static void LogAssets(IEnumerable<string> ids, string singular = null, string plural = null)
+		{
 			int count = 0;
-			foreach (string depPath in depPaths)
+			foreach (string id in ids)
 			{
-				++count;
-				Debug.Log(depPath, AssetDatabase.LoadMainAssetAtPath(depPath));
+				count++;
+				LogAsset(id);
 			}
+			if (singular == null) return;
+			if (plural == null) plural = singular;
 			switch (count)
 			{
-				case 0: Debug.Log("No dependencies found."); break;
-				case 1: Debug.Log("1 dependency found."); break;
-				default: Debug.Log($"{count} dependencies found."); break;
+				case 0: Debug.Log($"No {plural} found."); break;
+				case 1: Debug.Log($"1 {singular} found."); break;
+				default: Debug.Log($"{count} {plural} found."); break;
 			}
+		}
+
+		static void LogAsset(string id)
+		{
+			string path = AssetDatabase.GUIDToAssetPath(id);
+			var asset = AssetDatabase.LoadMainAssetAtPath(path);
+			Debug.Log($"[{asset.GetType().Name}] {path}", asset);
 		}
 
 		[MenuItem(MenuRoot + "Refresh")]
 		static void Create()
 		{
-			Delete();
 			Instance = CreateInstance<UsageDatabase>();
-			var refPaths = AssetDatabase.GetAllAssetPaths();
-			for (int i = 0, iCount = refPaths.Length; i < iCount; i++)
+			var paths = AssetDatabase.GetAllAssetPaths();
+			for (int i = 0, iCount = paths.Length; i < iCount; i++)
 			{
-				if (CancelableProgress("Creating " + ClassName, i + 1, iCount))
+				if (ShowProgress("Creating " + ClassName, i + 1, iCount, true))
 				{
-					Delete();
+					DestroyImmediate(Instance);
 					return;
 				}
-				Instance.AddRef(refPaths[i]);
+				Instance.AddRefer(paths[i]);
 			}
 			AssetDatabase.CreateAsset(Instance, DataPath);
+			Debug.Log(ClassName + " created.", Instance);
 		}
 
-		static void Load()
-		{
-			Instance = AssetDatabase.LoadAssetAtPath<UsageDatabase>(DataPath);
-		}
-
-		static void Delete()
-		{
-			if (Instance != null)
-			{
-				DestroyImmediate(Instance, true);
-				Instance = null;
-			}
-			AssetDatabase.DeleteAsset(DataPath);
-		}
-
-		static void Dirty()
-		{
-			if (Instance != null) EditorUtility.SetDirty(Instance);
-		}
-
-		static bool CancelableProgress(string title, int nth, int count)
+		static bool ShowProgress(string title, int nth, int count, bool cancelable = false)
 		{
 			if (nth == count)
 			{
 				EditorUtility.ClearProgressBar();
 				return false;
 			}
-			if ((nth & 63) == 1 && EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
+			if ((nth & 63) == 1)
 			{
-				EditorUtility.ClearProgressBar();
-				return true;
+				if (cancelable)
+				{
+					if (EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
+					{
+						EditorUtility.ClearProgressBar();
+						return true;
+					}
+				}
+				else
+				{
+					EditorUtility.DisplayProgressBar(title, $"{nth}/{count}", (float)nth / count);
+				}
 			}
 			return false;
 		}
 
-		[Serializable]
-		class Entry
+		static IEnumerable<T> BreadthFirstSearch<T>(IEnumerable<T> source,
+			Func<T, IEnumerable<T>> extender, bool excludeSource = false)
 		{
-			public string RefGUID;
-			public List<string> DepGUIDs;
+			var origin = new HashSet<T>(source);
+			var result = excludeSource ? new HashSet<T>(origin) : new HashSet<T>();
+			var queue = new Queue<T>(origin);
+			while (queue.Count > 0)
+				foreach (var item in extender(queue.Dequeue()))
+					if (result.Add(item))
+					{
+						if (!origin.Contains(item)) queue.Enqueue(item);
+						yield return item;
+					}
+		}
 
-			public Entry() { }
-			public Entry(string refGUID, List<string> depGUIDs)
+		[Serializable]
+		class Item
+		{
+			public string Id;
+			public List<string> DependIds;
+
+			public Item() { }
+			public Item(string id, List<string> dependIds)
 			{
-				RefGUID = refGUID;
-				DepGUIDs = depGUIDs;
+				Id = id;
+				DependIds = dependIds;
 			}
 		}
 
@@ -238,20 +230,16 @@
 			{
 				MainThreadDispatcher.Post(obj =>
 				{
-					var refPaths = obj as string[];
-					if (refPaths == null) return;
-					if (!Init(false))
+					var savePaths = obj as string[];
+					if (savePaths == null) return;
+					if (!Init()) return;
+					foreach (string path in savePaths)
 					{
-						Delete();
-						return;
+						string id = AssetDatabase.AssetPathToGUID(path);
+						Instance.RemoveRefer(id);
+						Instance.AddRefer(path, id);
 					}
-					foreach (string refPath in refPaths)
-					{
-						string refGUID = AssetDatabase.AssetPathToGUID(refPath);
-						Instance.RemoveRef(refGUID);
-						Instance.AddRef(refPath, refGUID);
-					}
-					Dirty();
+					EditorUtility.SetDirty(Instance);
 				}, paths);
 				return paths;
 			}
@@ -260,15 +248,11 @@
 			{
 				MainThreadDispatcher.Post(obj =>
 				{
-					string refPath = obj as string;
-					if (refPath == null) return;
-					if (!Init(false))
-					{
-						Delete();
-						return;
-					}
-					Instance.RemoveRef(AssetDatabase.AssetPathToGUID(refPath));
-					Dirty();
+					string deletePath = obj as string;
+					if (deletePath == null) return;
+					if (!Init()) return;
+					Instance.RemoveRefer(AssetDatabase.AssetPathToGUID(deletePath));
+					EditorUtility.SetDirty(Instance);
 				}, path);
 				return AssetDeleteResult.DidNotDelete;
 			}
