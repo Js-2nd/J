@@ -5,7 +5,6 @@
 	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
-	using UniRx;
 	using UnityEditor;
 	using UnityEngine;
 
@@ -29,7 +28,7 @@
 			DependDict.Clear();
 			foreach (var item in Data)
 				foreach (string dependId in item.DependIds)
-					AddPair(item.Id, dependId);
+					AddPair(item.Id, dependId, false);
 		}
 
 		void AddRefer(string path, string id = null)
@@ -43,10 +42,11 @@
 			}
 		}
 
-		void AddPair(string referId, string dependId)
+		void AddPair(string referId, string dependId, bool setDirty = true)
 		{
 			ReferDict.GetOrAdd(dependId, _ => new HashSet<string>()).Add(referId);
 			DependDict.GetOrAdd(referId, _ => new HashSet<string>()).Add(dependId);
+			if (setDirty) EditorUtility.SetDirty(this);
 		}
 
 		void RemoveRefer(string id)
@@ -56,12 +56,7 @@
 			foreach (string dependId in dependIds)
 				ReferDict.GetOrDefault(dependId)?.Remove(id);
 			dependIds.Clear();
-		}
-
-		void RemovePair(string referId, string dependId)
-		{
-			ReferDict.GetOrDefault(dependId)?.Remove(referId);
-			DependDict.GetOrDefault(referId)?.Remove(dependId);
+			EditorUtility.SetDirty(this);
 		}
 
 		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
@@ -224,37 +219,19 @@
 			}
 		}
 
-		class ModificationProcessor : AssetModificationProcessor
+		class Postprocessor : AssetPostprocessor
 		{
-			static string[] OnWillSaveAssets(string[] paths)
+			static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
 			{
-				MainThreadDispatcher.Post(obj =>
+				if (!Init()) return;
+				foreach (string path in deleted)
+					Instance.RemoveRefer(AssetDatabase.AssetPathToGUID(path));
+				foreach (string path in imported)
 				{
-					var savePaths = obj as string[];
-					if (savePaths == null) return;
-					if (!Init()) return;
-					foreach (string path in savePaths)
-					{
-						string id = AssetDatabase.AssetPathToGUID(path);
-						Instance.RemoveRefer(id);
-						Instance.AddRefer(path, id);
-					}
-					EditorUtility.SetDirty(Instance);
-				}, paths);
-				return paths;
-			}
-
-			static AssetDeleteResult OnWillDeleteAsset(string path, RemoveAssetOptions options)
-			{
-				MainThreadDispatcher.Post(obj =>
-				{
-					string deletePath = obj as string;
-					if (deletePath == null) return;
-					if (!Init()) return;
-					Instance.RemoveRefer(AssetDatabase.AssetPathToGUID(deletePath));
-					EditorUtility.SetDirty(Instance);
-				}, path);
-				return AssetDeleteResult.DidNotDelete;
+					string id = AssetDatabase.AssetPathToGUID(path);
+					Instance.RemoveRefer(id);
+					Instance.AddRefer(path, id);
+				}
 			}
 		}
 	}
