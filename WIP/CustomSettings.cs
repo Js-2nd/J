@@ -16,7 +16,7 @@
 		{
 			if (Instance == null)
 			{
-				var name = typeof(T).Name;
+				string name = typeof(T).Name;
 				Instance = Resources.Load<T>(name);
 				if (Instance == null)
 				{
@@ -24,7 +24,7 @@
 #if UNITY_EDITOR
 					if (!Directory.Exists(SettingsDirectory))
 						Directory.CreateDirectory(SettingsDirectory);
-					AssetDatabase.CreateAsset(Instance, string.Format("{0}/{1}.asset", SettingsDirectory, name));
+					AssetDatabase.CreateAsset(Instance, $"{SettingsDirectory}/{name}.asset");
 #endif
 				}
 			}
