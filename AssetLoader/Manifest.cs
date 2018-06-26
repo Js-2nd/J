@@ -93,13 +93,13 @@
 			return trimBundleName;
 		}
 
-		public IObservable<Unit> WaitForManifestLoaded()
+		public IObservable<Unit> WaitForManifestLoaded(bool? autoLoad = null)
 		{
 			return Observable.Defer(() =>
 			{
 				if (m_ManifestStatus.Value == ManifestStatus.Loaded)
 					return Observable.ReturnUnit();
-				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && AutoLoadManifest)
+				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && (autoLoad ?? AutoLoadManifest))
 					LoadManifest().Subscribe();
 				return m_ManifestStatus.FirstOrEmpty(status =>
 				{
@@ -131,6 +131,7 @@
 		public static IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null) =>
 			Instance.LoadManifest(uri, setRootUri);
 
-		public static IObservable<Unit> WaitForManifestLoaded() => Instance.WaitForManifestLoaded();
+		public static IObservable<Unit> WaitForManifestLoaded(bool? autoLoad = null) =>
+			Instance.WaitForManifestLoaded(autoLoad);
 	}
 }
