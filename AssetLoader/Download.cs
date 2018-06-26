@@ -4,7 +4,6 @@ using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
 
 namespace J
 {
-	using J.Internal;
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
@@ -92,17 +91,14 @@ namespace J
 
 		public IObservable<Unit> FetchSize(IProgress<float> progress = null)
 		{
-			return UnityWebRequest.Head(Downloader.RootUri + ActualName)
-				.SendAsObservable(progress)
-				.Do(req =>
+			return HttpUtil.GetContentLength(Downloader.RootUri + ActualName, progress)
+				.Do(size =>
 				{
-					if (ulong.TryParse(req.GetResponseHeader(HttpHeader.ContentLength), out Size))
-					{
-						Downloader.FetchedCount++;
-						Downloader.FetchedTotalSize += Size;
-					}
-				})
-				.AsUnitObservable();
+					if (size == null) return;
+					Size = size.Value;
+					Downloader.FetchedCount++;
+					Downloader.FetchedTotalSize += Size;
+				}).AsUnitObservable();
 		}
 
 		public IObservable<Unit> Download(IProgress<float> progress = null)
