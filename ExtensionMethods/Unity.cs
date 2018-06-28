@@ -1,7 +1,6 @@
 ﻿namespace UnityEngine
 {
 	using J;
-	using J.Internal;
 	using System;
 	using System.IO;
 	using UniRx;
@@ -26,7 +25,7 @@
 			if (request == null) throw new ArgumentNullException(nameof(request));
 			return Observable.Defer(() =>
 			{
-				if (eTag != null) request.SetRequestHeader(HttpHeader.IfNoneMatch, eTag);
+				if (eTag != null) request.SetIfNoneMatch(eTag);
 				var stream = request.SendWebRequest()
 					.AsAsyncOperationObservable(progress)
 					.Select(op =>
