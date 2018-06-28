@@ -1,6 +1,7 @@
 ﻿namespace UnityEngine
 {
 	using J;
+	using J.Internal;
 	using System;
 	using System.IO;
 	using UniRx;
@@ -16,17 +17,23 @@
 
 		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
 			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
+			bool autoDispose = true) =>
+			request.SendAsObservable(null, progress, throwNetworkError, throwHttpError, autoDispose);
+		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request, string eTag,
+			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
 			bool autoDispose = true)
 		{
 			if (request == null) throw new ArgumentNullException(nameof(request));
 			return Observable.Defer(() =>
 			{
+				if (eTag != null) request.SetRequestHeader(HttpHeader.IfNoneMatch, eTag);
 				var stream = request.SendWebRequest()
 					.AsAsyncOperationObservable(progress)
 					.Select(op =>
 					{
 						var req = op.webRequest;
-						req.TryThrowError(throwNetworkError, throwHttpError);
+						if (eTag == null || req.responseCode != 304)
+							req.TryThrowError(throwNetworkError, throwHttpError);
 						return req;
 					});
 				if (autoDispose) stream = stream.Finally(request.Dispose);

@@ -2,6 +2,7 @@
 {
 	using J.Internal;
 	using System;
+	using System.IO;
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
@@ -14,11 +15,8 @@
 		{
 			return Observable.Defer(() =>
 			{
-				var req = UnityWebRequest.Head(url);
-				if (eTag != null) req.SetRequestHeader(HttpHeader.IfNoneMatch, eTag);
-				return req.SendAsObservable(progress, false, false).Select(r =>
+				return UnityWebRequest.Head(url).SendAsObservable(eTag, progress).Select(r =>
 				{
-					if (r.responseCode != 304) r.TryThrowError();
 					ulong length;
 					if (ulong.TryParse(r.GetResponseHeader(HttpHeader.ContentLength), out length))
 						return length;
@@ -27,11 +25,27 @@
 			});
 		}
 
-		public static IObservable<UnityWebRequest> DownloadFile(string url, string path, bool removeFileOnAbort = false)
+		public static IObservable<UnityWebRequest> DownloadFile(string url, string path, bool removeOnError = false)
 		{
-			var handler = new DownloadHandlerFile(path) { removeFileOnAbort = removeFileOnAbort };
-			var req = new UnityWebRequest(url) { downloadHandler = handler };
+			var req = new UnityWebRequest(url);
+			var handler = new DownloadHandlerFile(path);
+			req.downloadHandler = handler;
+			handler.removeFileOnAbort = removeOnError;
 			return req.SendAsObservable();
+		}
+		public static IObservable<UnityWebRequest> DownloadFile(string url, string eTag, string path,
+			bool removeOnError = false)
+		{
+			var req = new UnityWebRequest(url);
+			var handler = new DownloadHandlerFile(path);
+			req.downloadHandler = handler;
+			var stream = req.SendAsObservable(eTag);
+			if (removeOnError) stream = stream.DoOnError(_ => // TODO will this work?
+			{
+				handler.Dispose();
+				File.Delete(path);
+			});
+			return stream;
 		}
 	}
 }

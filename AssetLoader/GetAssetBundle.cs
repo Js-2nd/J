@@ -31,16 +31,14 @@ namespace J
 				if (!Caching.IsVersionCached(uri, VersionToHash(version)))
 					return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
 						.SendAsObservable().Select(req => saveNewVersion(req, version));
-				var request = UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0);
-				request.SetRequestHeader(HttpHeader.IfNoneMatch, PlayerPrefs.GetString(eTagKey));
-				return request.SendAsObservable(throwNetworkError: false, throwHttpError: false).ContinueWith(req =>
-				{
-					if (req.responseCode == 304)
-						return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-							.SendAsObservable().Select(oldReq => new RequestInfo(oldReq, version, false));
-					req.TryThrowError();
-					return Observable.Return(saveNewVersion(req, version + 1));
-				});
+				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0)
+					.SendAsObservable(PlayerPrefs.GetString(eTagKey)).ContinueWith(req =>
+					{
+						if (req.responseCode == 304)
+							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
+								.SendAsObservable().Select(r => new RequestInfo(r, version, false));
+						return Observable.Return(saveNewVersion(req, version + 1));
+					});
 			});
 		}
 
