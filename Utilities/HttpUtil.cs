@@ -2,7 +2,6 @@
 {
 	using J.Internal;
 	using System;
-	using System.IO;
 	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
@@ -28,10 +27,10 @@
 			});
 		}
 
-		public static IObservable<UnityWebRequest> DownloadToPersist(string url, string path)
+		public static IObservable<UnityWebRequest> DownloadFile(string url, string path, bool removeFileOnAbort = false)
 		{
-			string fullPath = Path.Combine(Application.persistentDataPath, path);
-			var req = new UnityWebRequest(url) { downloadHandler = new DownloadHandlerFile(fullPath) };
+			var handler = new DownloadHandlerFile(path) { removeFileOnAbort = removeFileOnAbort };
+			var req = new UnityWebRequest(url) { downloadHandler = handler };
 			return req.SendAsObservable();
 		}
 	}
