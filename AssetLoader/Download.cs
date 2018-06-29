@@ -17,7 +17,7 @@ namespace J
 		{
 			return WaitForManifestLoaded().Select(_ =>
 			{
-				var actualNames = bundleNames.Select(NormBundleName).Select(GetActualBundleName);
+				var actualNames = bundleNames.Select(NormBundleName).Select(NormToActualName);
 				if (includeDependencies)
 					actualNames = actualNames.SelectMany(actualName =>
 						actualName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(actualName)));

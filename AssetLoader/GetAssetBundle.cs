@@ -42,7 +42,7 @@ namespace J
 			});
 		}
 
-		string GetActualBundleName(string normBundleName) => m_ActualBundleNames.GetOrDefault(normBundleName, normBundleName);
+		string NormToActualName(string normBundleName) => m_NormToActual.GetOrDefault(normBundleName, normBundleName);
 
 		IObservable<AssetBundle> GetAssetBundleCore(string actualName, IProgress<float> progress = null)
 		{
@@ -75,7 +75,7 @@ namespace J
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
-				string actualName = GetActualBundleName(entry.NormName);
+				string actualName = NormToActualName(entry.NormName);
 				return GetAssetBundle(actualName);
 			});
 		}
@@ -85,7 +85,7 @@ namespace J
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				AssetBundle entryBundle = null;
-				string actualName = GetActualBundleName(entry.NormName);
+				string actualName = NormToActualName(entry.NormName);
 				var dep = Manifest.GetAllDependencies(actualName).Select(GetAssetBundle);
 				return GetAssetBundle(actualName)
 					.Do(bundle => entryBundle = bundle)

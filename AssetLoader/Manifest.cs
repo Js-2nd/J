@@ -58,39 +58,27 @@
 			Manifest = manifest;
 			ManifestVersion = version;
 			ManifestIsNew = isNew;
-			MapActualBundleNames();
+			CreateNormToActualNameDict();
 			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
 
-		void MapActualBundleNames()
+		void CreateNormToActualNameDict()
 		{
-			m_ActualBundleNames.Clear();
+			m_NormToActual.Clear();
 			var all = Manifest.GetAllAssetBundles();
 			for (int i = 0; i < all.Length; i++)
 			{
-				string actualBundleName = all[i];
-				string trimBundleName;
-				if (TrimBundleNameHash(actualBundleName, out trimBundleName))
-					m_ActualBundleNames.Add(trimBundleName, actualBundleName);
+				string actualName = all[i];
+				m_NormToActual.Add(ActualToNormName(actualName), actualName);
 			}
 		}
 
-		bool TrimBundleNameHash(string normBundleName, out string trimBundleName)
+		string ActualToNormName(string actualName)
 		{
-			string hash = Manifest.GetAssetBundleHash(normBundleName).ToString();
-			if (normBundleName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
-			{
-				trimBundleName = normBundleName.Substring(0, normBundleName.Length - hash.Length - 1);
-				return true;
-			}
-			trimBundleName = normBundleName;
-			return false;
-		}
-		string TrimBundleNameHash(string normBundleName)
-		{
-			string trimBundleName;
-			TrimBundleNameHash(normBundleName, out trimBundleName);
-			return trimBundleName;
+			string hash = Manifest.GetAssetBundleHash(actualName).ToString();
+			if (actualName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
+				return actualName.Substring(0, actualName.Length - hash.Length - 1);
+			return actualName;
 		}
 
 		public IObservable<Unit> WaitForManifestLoaded(bool? autoLoad = null)

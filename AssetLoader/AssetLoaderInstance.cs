@@ -56,14 +56,14 @@
 		}
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
-		Dictionary<string, string> m_ActualBundleNames;
+		Dictionary<string, string> m_NormToActual;
 		Dictionary<string, AsyncSubject<AssetBundle>> m_BundleCache;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
-			m_ActualBundleNames = new Dictionary<string, string>();
+			m_NormToActual = new Dictionary<string, string>();
 			m_BundleCache = new Dictionary<string, AsyncSubject<AssetBundle>>();
 			UpdateLoadMethod();
 			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
