@@ -75,10 +75,17 @@ namespace J
 					nonFetchQueue.Add(info.Download);
 				}
 			}
+			// TODO calc weight using PredictTotalSize
 			var queue = new TaskQueue();
 			if (fetchQueue != null) queue.AddTaskQueue(fetchQueue, (float)fetched / fetchedSize);
 			if (nonFetchQueue != null) queue.AddTaskQueue(nonFetchQueue);
 			return queue;
+		}
+
+		public ulong PredictTotalSize()
+		{
+			if (FetchedCount == 0) return (ulong)List.Count;
+			return (ulong)(Math.Max((double)FetchedTotalSize / FetchedCount, 1) * List.Count);
 		}
 	}
 
