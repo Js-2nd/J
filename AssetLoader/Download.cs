@@ -91,13 +91,17 @@ namespace J
 
 		public IObservable<Unit> FetchSize(IProgress<float> progress = null)
 		{
-			return HttpUtil.GetContentLength(Downloader.RootUri + ActualName, progress)
-				.Do(size =>
+			return UnityWebRequest.Head(Downloader.RootUri + ActualName)
+				.SendAsObservable(progress)
+				.Do(req =>
 				{
-					if (size == null) return;
-					Size = size.Value;
-					Downloader.FetchedCount++;
-					Downloader.FetchedTotalSize += Size;
+					var size = req.GetContentLengthNum();
+					if (size > 0)
+					{
+						Size = size.Value;
+						Downloader.FetchedCount++;
+						Downloader.FetchedTotalSize += Size;
+					}
 				}).AsUnitObservable();
 		}
 

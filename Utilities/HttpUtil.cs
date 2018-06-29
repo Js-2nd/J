@@ -1,6 +1,5 @@
 ﻿namespace J
 {
-	using J.Internal;
 	using System;
 	using System.IO;
 	using UniRx;
@@ -9,43 +8,29 @@
 
 	public static class HttpUtil
 	{
-		public static IObservable<ulong?> GetContentLength(string url, IProgress<float> progress = null) =>
-			GetContentLength(url, null, progress);
-		public static IObservable<ulong?> GetContentLength(string url, string eTag, IProgress<float> progress = null)
+		public static IObservable<UnityWebRequest> DownloadFile(string url, string savePath, string tempPath = null,
+			Action beforeSave = null, string eTag = null, IProgress<float> progress = null,
+			bool throwNetworkError = true, bool throwHttpError = true, bool autoDispose = true)
 		{
-			return Observable.Defer(() =>
-			{
-				return UnityWebRequest.Head(url).SendAsObservable(eTag, progress).Select(r =>
+			if (tempPath == null) tempPath = savePath + ".tmp";
+			var request = new UnityWebRequest(url);
+			var handler = new DownloadHandlerFile(tempPath);
+			request.downloadHandler = handler;
+			return request.SendAsObservable(eTag, progress, throwNetworkError, throwHttpError, autoDispose)
+				.Do(req =>
 				{
-					ulong length;
-					if (ulong.TryParse(r.GetResponseHeader(HttpHeader.ContentLength), out length))
-						return length;
-					return (ulong?)null;
+					handler.Dispose();
+					if (req.responseCode == 200)
+					{
+						beforeSave?.Invoke();
+						File.Delete(savePath);
+						File.Move(tempPath, savePath);
+					}
+					else
+					{
+						File.Delete(tempPath);
+					}
 				});
-			});
-		}
-
-		public static IObservable<UnityWebRequest> DownloadFile(string url, string path, bool removeOnError = false)
-		{
-			var req = new UnityWebRequest(url);
-			var handler = new DownloadHandlerFile(path);
-			req.downloadHandler = handler;
-			handler.removeFileOnAbort = removeOnError;
-			return req.SendAsObservable();
-		}
-		public static IObservable<UnityWebRequest> DownloadFile(string url, string eTag, string path,
-			bool removeOnError = false)
-		{
-			var req = new UnityWebRequest(url);
-			var handler = new DownloadHandlerFile(path);
-			req.downloadHandler = handler;
-			var stream = req.SendAsObservable(eTag);
-			if (removeOnError) stream = stream.DoOnError(_ => // TODO will this work?
-			{
-				handler.Dispose();
-				File.Delete(path);
-			});
-			return stream;
 		}
 	}
 }
