@@ -1,19 +1,16 @@
-﻿namespace UnityEngine
+﻿namespace J
 {
-	using J;
 	using System;
 	using System.IO;
 	using UniRx;
+	using UnityEngine;
 	using UnityEngine.Networking;
 
 	public static partial class ExtensionMethods
 	{
-		public static void TryThrowError(this UnityWebRequest request, bool throwNetworkError = true, bool throwHttpError = true)
-		{
-			if (request.isNetworkError && throwNetworkError) throw new NetworkException(request);
-			if (request.isHttpError && throwHttpError) throw new HttpException(request);
-		}
-
+		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
+			IUnityWebRequestSendOptions options, IProgress<float> progress = null) => request.SendAsObservable(
+			options.ETag, progress, options.ThrowNetworkError, options.ThrowHttpError, options.AutoDispose);
 		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
 			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
 			bool autoDispose = true) =>
@@ -32,7 +29,10 @@
 					{
 						var req = op.webRequest;
 						if (eTag == null || req.responseCode != 304)
-							req.TryThrowError(throwNetworkError, throwHttpError);
+						{
+							if (req.isNetworkError && throwNetworkError) throw new NetworkException(req);
+							if (req.isHttpError && throwHttpError) throw new HttpException(req);
+						}
 						return req;
 					});
 				if (autoDispose) stream = stream.Finally(request.Dispose);
@@ -40,7 +40,7 @@
 			});
 		}
 
-		public static IObservable<AssetBundle> ToAssetBundle(this IObservable<UnityWebRequest> source,
+		public static IObservable<AssetBundle> LoadAssetBundle(this IObservable<UnityWebRequest> source,
 			bool throwError = true)
 		{
 			return source.Select(request =>

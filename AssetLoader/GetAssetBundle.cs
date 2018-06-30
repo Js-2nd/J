@@ -51,7 +51,7 @@ namespace J
 				string uri = RootUri + actualName;
 				var hash = Manifest.GetAssetBundleHash(actualName);
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, hash, 0)
-					.SendAsObservable(progress).ToAssetBundle();
+					.SendAsObservable(progress).LoadAssetBundle();
 			});
 		}
 

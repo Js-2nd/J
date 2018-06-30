@@ -31,7 +31,7 @@
 				{
 					requestInfo = info;
 					return info.Request;
-				}).ToAssetBundle().ContinueWith(bundle =>
+				}).LoadAssetBundle().ContinueWith(bundle =>
 				{
 					manifestBundle = bundle;
 					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest")
