@@ -10,10 +10,10 @@
 
 		public static string GetContentLength(this UnityWebRequest request) =>
 			request.GetResponseHeader(HttpHeader.ContentLength);
-		public static ulong? GetContentLengthNum(this UnityWebRequest request)
+		public static long? GetContentLengthNum(this UnityWebRequest request)
 		{
-			ulong length;
-			if (ulong.TryParse(request.GetContentLength(), out length)) return length;
+			long length;
+			if (long.TryParse(request.GetContentLength(), out length)) return length;
 			return null;
 		}
 	}

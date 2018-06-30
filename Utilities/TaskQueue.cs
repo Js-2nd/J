@@ -1,12 +1,12 @@
-﻿using J.Internal;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using UniRx;
-
-namespace J
+﻿namespace J
 {
+	using J.Internal;
+	using System;
+	using System.Collections;
+	using System.Collections.Generic;
+	using System.Linq;
+	using UniRx;
+
 	public delegate IObservable<Unit> TaskFunc(IProgress<float> progress = null);
 
 	public struct TaskWeightPair
@@ -138,7 +138,7 @@ namespace J
 
 	namespace Internal
 	{
-		static partial class ExtensionMethods
+		public static partial class ExtensionMethods
 		{
 			public static IObservable<T> ReportOnCompleted<T>(this IObservable<T> observable, IProgress<float> progress)
 			{
