@@ -7,8 +7,21 @@ using UniRx;
 
 namespace J
 {
-	using TaskFunc = Func<IProgress<float>, IObservable<Unit>>;
-	using TaskWeightPair = KeyValuePair<Func<IProgress<float>, IObservable<Unit>>, float?>;
+	public delegate IObservable<Unit> TaskFunc(IProgress<float> progress = null);
+
+	public struct TaskWeightPair
+	{
+		public TaskFunc Task;
+		public float? Weight;
+
+		public TaskWeightPair(TaskFunc task, float? weight = null)
+		{
+			Task = task;
+			Weight = weight;
+		}
+
+		public float GetWeightOrDefault() => Weight ?? 1;
+	}
 
 	public sealed class TaskQueue
 	{
@@ -28,11 +41,8 @@ namespace J
 
 		public void Clear() => queue.Clear();
 
-		public void Add(TaskFunc taskFunc, float? weight = null)
-		{
-			var pair = new TaskWeightPair(taskFunc, weight);
-			queue.Enqueue(pair.ToSingleEnumerable());
-		}
+		public void Add(TaskFunc taskFunc, float? weight = null) => Add(new TaskWeightPair(taskFunc, weight));
+		public void Add(TaskWeightPair pair) => queue.Enqueue(pair.ToSingleEnumerable());
 
 		public void AddObservable(IObservable<Unit> observable, float? weight = null)
 		{
@@ -98,7 +108,7 @@ namespace J
 			if (taskQueue == null) return;
 			var pairs = taskQueue.All;
 			if (weight != null) pairs = pairs.Select(pair =>
-				new TaskWeightPair(pair.Key, pair.Weight() * weight.Value));
+				new TaskWeightPair(pair.Task, pair.GetWeightOrDefault() * weight.Value));
 			queue.Enqueue(pairs);
 		}
 
@@ -110,12 +120,12 @@ namespace J
 			IEnumerable<IObservable<Unit>> all;
 			if (hasProgress)
 			{
-				float total = All.Aggregate(0f, (sum, pair) => sum + pair.Weight());
-				all = All.Select(pair => pair.Key(dividableProgress.Divide(pair.Weight() / total)));
+				float total = All.Aggregate(0f, (sum, pair) => sum + pair.GetWeightOrDefault());
+				all = All.Select(pair => pair.Task(dividableProgress.Divide(pair.GetWeightOrDefault() / total)));
 			}
 			else
 			{
-				all = All.Select(pair => pair.Key(null));
+				all = All.Select(pair => pair.Task(null));
 			}
 			if (ignoreError != null)
 				all = all.Select(source => source.CatchIgnore(ignoreError));
@@ -135,8 +145,6 @@ namespace J
 				if (progress == null) return observable;
 				return observable.DoOnCompleted(() => progress.Report(1f));
 			}
-
-			public static float Weight(this TaskWeightPair pair) => pair.Value ?? 1;
 		}
 	}
 }
