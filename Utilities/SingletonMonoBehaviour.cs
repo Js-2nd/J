@@ -10,7 +10,7 @@
 		{
 			if (Instance == null || Instance == this)
 			{
-				Instance = this as T;
+				Instance = (T)this;
 				SingletonAwake();
 			}
 			else

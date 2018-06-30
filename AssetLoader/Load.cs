@@ -71,13 +71,13 @@
 		public static IObservable<Object> Load(string bundleName, Type assetType) =>
 			Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Single));
 		public static IObservable<T> Load<T>(string bundleName, string assetName = null) where T : Object =>
-			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Single)).Select(obj => obj as T);
+			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Single)).Select(obj => (T)obj);
 
 		public static IObservable<Object> LoadMulti(string bundleName, string assetName = null, Type assetType = null) =>
 			Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Multi));
 		public static IObservable<Object> LoadMulti(string bundleName, Type assetType) =>
 			Instance.Load(new AssetEntry(bundleName, null, assetType, LoadMethod.Multi));
 		public static IObservable<T> LoadMulti<T>(string bundleName, string assetName = null) where T : Object =>
-			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Multi)).Select(obj => obj as T);
+			Instance.Load(new AssetEntry(bundleName, assetName, typeof(T), LoadMethod.Multi)).Select(obj => (T)obj);
 	}
 }

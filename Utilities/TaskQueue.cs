@@ -125,7 +125,7 @@ namespace J
 			}
 			else
 			{
-				all = All.Select(pair => pair.Task(null));
+				all = All.Select(pair => pair.Task());
 			}
 			if (ignoreError != null)
 				all = all.Select(source => source.CatchIgnore(ignoreError));
