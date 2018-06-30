@@ -4,70 +4,70 @@
 	using System.Collections.Generic;
 	using System.Linq;
 	using UniRx;
+	using UnityEngine.Networking;
 
 	public class BatchDownloader
 	{
 		readonly List<Item> list = new List<Item>();
 
-		public int ItemCount => list.Count;
-		public int DownloadCount => ItemCount - CachedCount;
-		public int CachedCount { get; private set; }
+		public IReadOnlyList<Item> List => list;
+
+		public int DownloadedCount { get; private set; }
 		public int KnownSizeCount { get; private set; }
 		public ulong TotalKnownSize { get; private set; }
-
-		public double PredictDownloadSize
-		{
-			get
-			{
-				int downloadCount = DownloadCount;
-				if (KnownSizeCount == downloadCount) return TotalKnownSize;
-				if (KnownSizeCount == 0) return downloadCount;
-				return (double)TotalKnownSize * downloadCount / KnownSizeCount;
-			}
-		}
 
 		public TaskQueue FetchHeadTask()
 		{
 			var queue = new TaskQueue();
-			for (int i = 0, iCount = ItemCount; i < iCount; i++)
+			for (int i = 0; i < list.Count; i++)
 			{
 				var item = list[i];
 				if (item.IsHeadFetched) continue;
-				queue.Add(progress => item.Downloader.Head(progress).Do(req =>
-				{
-					// check IsHeadFetched again in case of parallel running
-					if (item.IsHeadFetched) return;
-					item.IsHeadFetched = true;
-					if (req.responseCode == 304)
-					{
-						item.SkipDownload = true;
-						CachedCount++;
-						return;
-					}
-					var length = req.GetContentLengthNum();
-					if (length >= 0)
-					{
-						item.Weight = Math.Max(length.Value, 1);
-						KnownSizeCount++;
-						TotalKnownSize += (ulong)length.Value;
-					}
-				}).AsUnitObservable());
+				queue.Add(progress => item.Downloader.FetchHead(progress)
+					.Do(req => OnHeadFetched(item, req)).AsUnitObservable());
 			}
 			return queue;
+		}
+
+		void OnHeadFetched(Item item, UnityWebRequest request)
+		{
+			if (item.IsHeadFetched) return;
+			item.IsHeadFetched = true;
+			if (request.responseCode == 304)
+			{
+				OnDownloaded(item);
+				return;
+			}
+			item.Size = request.GetContentLengthNum();
+			if (item.Size >= 0)
+			{
+				KnownSizeCount++;
+				TotalKnownSize += (ulong)item.Size.Value;
+			}
+		}
+
+		void OnDownloaded(Item item)
+		{
+			if (item.IsDownloaded) return;
+			item.IsDownloaded = true;
+			DownloadedCount++;
 		}
 
 		public TaskQueue DownloadTask()
 		{
 			var queue = new TaskQueue();
-			int downloadCount = DownloadCount;
-			if (downloadCount <= 0) return queue;
-			float unknownSizeWeight = (float)Math.Max(PredictDownloadSize / downloadCount, 1);
-			for (int i = 0, iCount = ItemCount; i < iCount; i++)
+			if (list.Count <= DownloadedCount) return queue;
+			var averageSize = KnownSizeCount > 0 ? (float)TotalKnownSize / KnownSizeCount : (float?)null;
+			for (int i = 0; i < list.Count; i++)
 			{
 				var item = list[i];
-				if (item.SkipDownload) continue;
-				queue.Add(progress => item.Downloader.Download(progress).AsUnitObservable(),
-					item.Weight ?? unknownSizeWeight);
+				if (item.IsDownloaded) continue;
+				TaskFunc task = progress => item.Downloader.Download(progress).Do(req =>
+				{
+					OnHeadFetched(item, req);
+					OnDownloaded(item);
+				}).AsUnitObservable();
+				queue.Add(task, item.Size >= 0 ? Math.Max(item.Size.Value, 1) : averageSize);
 			}
 			return queue;
 		}
@@ -81,8 +81,8 @@
 		{
 			public IDownloader Downloader;
 			public bool IsHeadFetched;
-			public bool SkipDownload;
-			public float? Weight;
+			public bool IsDownloaded;
+			public long? Size;
 
 			public static Item FromDownloader(IDownloader downloader) => new Item { Downloader = downloader };
 		}

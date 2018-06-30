@@ -12,7 +12,7 @@
 
 	public static partial class ExtensionMethods
 	{
-		public static IObservable<UnityWebRequest> Head(this IDownloader downloader, IProgress<float> progress = null)
+		public static IObservable<UnityWebRequest> FetchHead(this IDownloader downloader, IProgress<float> progress = null)
 		{
 			var request = UnityWebRequest.Head(downloader.Url);
 			var options = downloader as IUnityWebRequestSendOptions;
