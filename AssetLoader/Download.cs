@@ -67,7 +67,7 @@ namespace J
 					if (fetchQueue == null) fetchQueue = new TaskQueue();
 					fetchQueue.Add(info.Download, info.Size);
 					fetched++;
-					fetchedSize += info.Size;
+					fetchedSize += (ulong)info.Size;
 				}
 				else
 				{
@@ -94,7 +94,7 @@ namespace J
 		public BundleDownloader Downloader;
 		public string ActualName;
 		public Hash128 Hash;
-		public ulong Size;
+		public long Size;
 
 		public IObservable<Unit> FetchSize(IProgress<float> progress = null)
 		{
@@ -107,7 +107,7 @@ namespace J
 					{
 						Size = size.Value;
 						Downloader.FetchedCount++;
-						Downloader.FetchedTotalSize += Size;
+						Downloader.FetchedTotalSize += (ulong)Size;
 					}
 				}).AsUnitObservable();
 		}
