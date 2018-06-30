@@ -2,6 +2,7 @@
 {
 	using System;
 	using System.Collections.Generic;
+	using System.Linq;
 	using UniRx;
 
 	public class BatchDownloader
@@ -71,7 +72,10 @@
 			return queue;
 		}
 
-		public void Add(IDownloader downloader) => list.Add(new Item { Downloader = downloader });
+		public void Add(IDownloader downloader) => list.Add(Item.FromDownloader(downloader));
+
+		public void AddRange(IEnumerable<IDownloader> downloaders) =>
+			list.AddRange(downloaders.Select(Item.FromDownloader));
 
 		public class Item
 		{
@@ -79,6 +83,8 @@
 			public bool IsHeadFetched;
 			public bool SkipDownload;
 			public float? Weight;
+
+			public static Item FromDownloader(IDownloader downloader) => new Item { Downloader = downloader };
 		}
 	}
 }

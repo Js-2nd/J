@@ -22,7 +22,6 @@ namespace J
 	public class AssetBundleDownloader<T> : UnityWebRequestSendOptions<T>,
 		IAssetBundleDownloader where T : AssetBundleDownloader<T>
 	{
-		// TODO need BundleName?
 		public string Url { get; set; }
 		public Hash128 Hash { get; set; }
 
