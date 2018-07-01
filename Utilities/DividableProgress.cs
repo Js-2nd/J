@@ -36,6 +36,8 @@
 			}).AddTo(cancel);
 			return divide;
 		}
+
+		public DividableProgress DivideRest() => Divide(1 - inner.Value);
 	}
 
 	public static partial class ExtensionMethods
