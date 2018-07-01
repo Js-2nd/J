@@ -113,7 +113,7 @@
 		}
 
 		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 8,
-			Action<Exception> ignoreError = null) => Observable.Defer(() =>
+			Action<Exception> catchIgnore = null) => Observable.Defer(() =>
 		{
 			var dividableProgress = progress.ToDividableProgress();
 			bool hasProgress = dividableProgress != null;
@@ -127,8 +127,8 @@
 			{
 				all = All.Select(pair => pair.Task());
 			}
-			if (ignoreError != null)
-				all = all.Select(source => source.CatchIgnore(ignoreError));
+			if (catchIgnore != null)
+				all = all.Select(source => source.CatchIgnore(catchIgnore));
 			var merge = all.Merge(maxConcurrent);
 			if (hasProgress)
 				merge = merge.ReportOnCompleted(dividableProgress);
