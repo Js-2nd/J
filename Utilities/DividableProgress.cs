@@ -37,7 +37,7 @@
 			return divide;
 		}
 
-		public DividableProgress DivideRest() => Divide(1 - inner.Value);
+		public DividableProgress DivideRest(float weight = 1) => Divide((1 - inner.Value) * weight);
 	}
 
 	public static partial class ExtensionMethods
