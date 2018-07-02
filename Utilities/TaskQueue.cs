@@ -112,8 +112,8 @@
 			queue.Enqueue(pairs);
 		}
 
-		public IObservable<Unit> ToObservable(IProgress<float> progress = null, int maxConcurrent = 8,
-			Action<Exception> catchIgnore = null) => Observable.Defer(() =>
+		public IObservable<Unit> ToObservable(IProgress<float> progress = null, Action<Exception> catchIgnore = null,
+			int maxConcurrent = 8) => Observable.Defer(() =>
 		{
 			var dividableProgress = progress.ToDividableProgress();
 			bool hasProgress = dividableProgress != null;
