@@ -9,7 +9,8 @@
 	{
 		string SavePath { get; }
 		string TempPath { get; }
-		Action BeforeSave { get; }
+		Action<IFileDownloader> BeforeSave { get; }
+		Action<IFileDownloader> AfterSave { get; }
 	}
 
 	public class FileDownloader : FileDownloader<FileDownloader>
@@ -24,7 +25,8 @@
 		public string Url { get; set; }
 		public string SavePath { get; set; }
 		public string TempPath { get; set; }
-		public Action BeforeSave { get; set; }
+		public Action<IFileDownloader> BeforeSave { get; set; }
+		public Action<IFileDownloader> AfterSave { get; set; }
 
 		public T SetUrl(string url)
 		{
@@ -41,9 +43,14 @@
 			TempPath = tempPath;
 			return (T)this;
 		}
-		public T SetBeforeSave(Action beforeSave)
+		public T SetBeforeSave(Action<IFileDownloader> beforeSave)
 		{
 			BeforeSave = beforeSave;
+			return (T)this;
+		}
+		public T SetAfterSave(Action<IFileDownloader> afterSave)
+		{
+			AfterSave = afterSave;
 			return (T)this;
 		}
 
@@ -59,10 +66,11 @@
 					handler.Dispose();
 					if (req.responseCode == 200)
 					{
-						BeforeSave?.Invoke();
+						BeforeSave?.Invoke(this);
 						File.Delete(SavePath);
 						File.Move(tempPath, SavePath);
 						ETag = req.GetETag();
+						AfterSave?.Invoke(this);
 					}
 					else
 					{
