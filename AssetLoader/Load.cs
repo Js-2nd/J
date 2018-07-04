@@ -2,11 +2,14 @@
 {
 	using J.Internal;
 	using System;
+	using System.Collections.Generic;
 	using UniRx;
 	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
 	{
+		static readonly HashSet<Object> Collector = new HashSet<Object>(); // FIXME
+
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
 			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(bundle =>
@@ -15,10 +18,12 @@
 				{
 					case LoadMethod.Single:
 						return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().Select(req => req.asset);
+							.AsAsyncOperationObservable().Select(req => req.asset)
+							.Do(obj => Collector.Add(obj));
 					case LoadMethod.Multi:
 						return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
+							.AsAsyncOperationObservable().SelectMany(req => req.allAssets)
+							.Do(obj => Collector.Add(obj));
 					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
 				}
 			});
