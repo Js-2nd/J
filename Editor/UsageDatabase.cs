@@ -8,9 +8,10 @@
 	using UnityEditor;
 	using UnityEngine;
 
+	[PreferBinarySerialization]
 	public partial class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
 	{
-		[SerializeField] List<Item> Data = new List<Item>();
+		[SerializeField, HideInInspector] List<Item> Data = new List<Item>();
 		Dictionary<string, HashSet<string>> ReferDict = new Dictionary<string, HashSet<string>>();
 		Dictionary<string, HashSet<string>> DependDict = new Dictionary<string, HashSet<string>>();
 
