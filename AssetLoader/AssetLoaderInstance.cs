@@ -10,49 +10,43 @@
 		static readonly char[] Delimiters = { '/', '\\' };
 
 		[SerializeField] AssetSimulation m_Simulation;
-		[SerializeField] bool m_DontDestroyOnLoad;
+		[SerializeField] bool m_DontDestroyOnLoad = true;
 		public bool UnloadAssetsOnDestroy;
-		public bool AutoLoadManifest;
-		public string EDITOR_URI;
-		public string STANDALONE_URI;
-		public string ANDROID_URI;
-		public string IOS_URI;
+		public bool AutoLoadManifest = true;
+		public string EditorManifestUrl;
+		public string StandaloneManifestUrl;
+		public string AndroidManifestUrl;
+		public string IosManifestUrl;
 
-		public string PresetManifestUri
+		public string PresetManifestUrl
 		{
 			get
 			{
 				return
 #if UNITY_EDITOR
-					EDITOR_URI
+					EditorManifestUrl
 #elif UNITY_ANDROID
-					ANDROID_URI
+					AndroidManifestUrl
 #elif UNITY_IOS
-					IOS_URI
+					IosManifestUrl
 #else
-					STANDALONE_URI
+					StandaloneManifestUrl
 #endif
 					;
 			}
 			set
 			{
 #if UNITY_EDITOR
-				EDITOR_URI
+				EditorManifestUrl
 #elif UNITY_ANDROID
-				ANDROID_URI
+				AndroidManifestUrl
 #elif UNITY_IOS
-				IOS_URI
+				IosManifestUrl
 #else
-				STANDALONE_URI
+				StandaloneManifestUrl
 #endif
 					= value;
 			}
-		}
-
-		void Reset()
-		{
-			m_DontDestroyOnLoad = true;
-			AutoLoadManifest = true;
 		}
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
@@ -99,10 +93,10 @@
 			set { Instance.AutoLoadManifest = value; }
 		}
 
-		public static string PresetManifestUri
+		public static string PresetManifestUrl
 		{
-			get { return Instance.PresetManifestUri; }
-			set { Instance.PresetManifestUri = value; }
+			get { return Instance.PresetManifestUrl; }
+			set { Instance.PresetManifestUrl = value; }
 		}
 	}
 

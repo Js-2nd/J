@@ -48,7 +48,7 @@ namespace J
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
-				string uri = RootUri + actualName;
+				string uri = RootUrl + actualName;
 				var hash = Manifest.GetAssetBundleHash(actualName);
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, hash, 0)
 					.SendAsObservable(progress).LoadAssetBundle();

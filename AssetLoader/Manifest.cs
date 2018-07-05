@@ -12,22 +12,21 @@
 
 		public AssetBundleManifest Manifest { get; private set; }
 		public int ManifestVersion { get; private set; }
-		public bool ManifestIsNew { get; private set; }
-		public string RootUri { get; set; }
+		public string RootUrl { get; set; }
 
-		public IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null)
+		public IObservable<Unit> LoadManifest(string url = null, bool? setRootUrl = null)
 		{
-			if (string.IsNullOrEmpty(uri))
+			if (string.IsNullOrEmpty(url))
 			{
-				uri = PresetManifestUri;
-				if (string.IsNullOrEmpty(uri)) uri = "/";
+				url = PresetManifestUrl;
+				if (string.IsNullOrEmpty(url)) url = "/";
 			}
 			return Observable.Defer(() =>
 			{
 				m_ManifestStatus.Value = ManifestStatus.Loading;
 				RequestInfo requestInfo = null;
 				AssetBundle manifestBundle = null;
-				return SendAssetBundleRequest(uri, ManifestVersionKey, ManifestETagKey).Select(info =>
+				return SendAssetBundleRequest(url, ManifestVersionKey, ManifestETagKey).Select(info =>
 				{
 					requestInfo = info;
 					return info.Request;
@@ -40,8 +39,8 @@
 				{
 					var manifest = bundleRequest.asset as AssetBundleManifest;
 					if (manifest == null) throw new InvalidDataException("AssetBundleManifest not found.");
-					if (setRootUri ?? true) RootUri = uri.Substring(0, uri.LastIndexOfAny(Delimiters) + 1);
-					SetManifest(manifest, requestInfo.Version, requestInfo.IsNew);
+					if (setRootUrl ?? true) RootUrl = url.Substring(0, url.LastIndexOfAny(Delimiters) + 1);
+					SetManifest(manifest, requestInfo.Version);
 					return Unit.Default;
 				}).Finally(() =>
 				{
@@ -52,12 +51,11 @@
 			});
 		}
 
-		void SetManifest(AssetBundleManifest manifest, int version, bool isNew) // TODO clear bundle cache?
+		void SetManifest(AssetBundleManifest manifest, int version) // TODO clear bundle cache?
 		{
 			if (manifest == null) throw new ArgumentNullException(nameof(manifest));
 			Manifest = manifest;
 			ManifestVersion = version;
-			ManifestIsNew = isNew;
 			CreateNormToActualNameDict();
 			m_ManifestStatus.Value = ManifestStatus.Loaded;
 		}
@@ -112,12 +110,10 @@
 
 		public static int ManifestVersion => Instance.ManifestVersion;
 
-		public static bool ManifestIsNew => Instance.ManifestIsNew;
+		public static string RootUrl { get { return Instance.RootUrl; } set { Instance.RootUrl = value; } }
 
-		public static string RootUri { get { return Instance.RootUri; } set { Instance.RootUri = value; } }
-
-		public static IObservable<Unit> LoadManifest(string uri = null, bool? setRootUri = null) =>
-			Instance.LoadManifest(uri, setRootUri);
+		public static IObservable<Unit> LoadManifest(string url = null, bool? setRootUrl = null) =>
+			Instance.LoadManifest(url, setRootUrl);
 
 		public static IObservable<Unit> WaitForManifestLoaded(bool? autoLoad = null) =>
 			Instance.WaitForManifestLoaded(autoLoad);

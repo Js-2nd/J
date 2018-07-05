@@ -22,7 +22,7 @@
 				{
 					var hash = Manifest.GetAssetBundleHash(actualName);
 					if (!Caching.IsVersionCached(actualName, hash))
-						downloader.Add(AssetBundleDownloader.Create(RootUri + actualName, hash));
+						downloader.Add(AssetBundleDownloader.Create(RootUrl + actualName, hash));
 				}
 				return downloader;
 			});
