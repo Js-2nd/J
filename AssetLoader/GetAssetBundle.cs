@@ -4,7 +4,6 @@ using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
 
 namespace J
 {
-	using J.Internal;
 	using System;
 	using System.Collections.Generic;
 	using System.Linq;
@@ -20,24 +19,23 @@ namespace J
 		{
 			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
 			{
-				Func<UnityWebRequest, int, RequestInfo> saveNewVersion = (req, ver) =>
+				Func<UnityWebRequest, int, RequestInfo> save = (req, ver) =>
 				{
 					PlayerPrefs.SetInt(versionKey, ver);
-					PlayerPrefs.SetString(eTagKey, req.GetResponseHeader(HttpHeader.ETag));
-					PlayerPrefs.Save();
-					return new RequestInfo(req, ver, true);
+					PlayerPrefs.SetString(eTagKey, req.GetETag());
+					return new RequestInfo(req, ver);
 				};
 				int version = PlayerPrefs.GetInt(versionKey, 1);
 				if (!Caching.IsVersionCached(uri, VersionToHash(version)))
 					return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-						.SendAsObservable().Select(req => saveNewVersion(req, version));
-				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version + 1), 0)
+						.SendAsObservable().Select(req => save(req, version));
+				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(unchecked(version + 1)), 0)
 					.SendAsObservable(PlayerPrefs.GetString(eTagKey)).ContinueWith(req =>
 					{
 						if (req.responseCode == 304)
 							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-								.SendAsObservable().Select(r => new RequestInfo(r, version, false));
-						return Observable.Return(saveNewVersion(req, version + 1));
+								.SendAsObservable().Select(r => new RequestInfo(r, version));
+						return Observable.Return(save(req, unchecked(version + 1)));
 					});
 			});
 		}
@@ -100,13 +98,11 @@ namespace J
 	{
 		public UnityWebRequest Request { get; }
 		public int Version { get; }
-		public bool IsNew { get; }
 
-		public RequestInfo(UnityWebRequest request, int version, bool isNew)
+		public RequestInfo(UnityWebRequest request, int version)
 		{
 			Request = request;
 			Version = version;
-			IsNew = isNew;
 		}
 	}
 
