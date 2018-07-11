@@ -1,9 +1,14 @@
-﻿namespace J
+﻿#if !UNITY_2018_1_OR_NEWER
+using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
+#endif
+
+namespace J
 {
 	using System;
 	using System.IO;
 	using UniRx;
 	using UnityEngine;
+	using UnityEngine.Networking;
 
 	partial class AssetLoaderInstance
 	{
@@ -24,13 +29,15 @@
 			return Observable.Defer(() =>
 			{
 				m_ManifestStatus.Value = ManifestStatus.Loading;
-				RequestInfo requestInfo = null;
+				//RequestInfo requestInfo = null;
+				RequestInfo requestInfo = new RequestInfo(null, 0);
 				AssetBundle manifestBundle = null;
-				return SendAssetBundleRequest(url, ManifestVersionKey, ManifestETagKey).Select(info =>
-				{
-					requestInfo = info;
-					return info.Request;
-				}).LoadAssetBundle().ContinueWith(bundle =>
+				//return SendAssetBundleRequest(url, ManifestVersionKey, ManifestETagKey).Select(info =>
+				//{
+				//	requestInfo = info;
+				//	return info.Request;
+				//}).LoadAssetBundle().ContinueWith(bundle =>
+				return UnityWebRequestAssetBundle.GetAssetBundle(url).SendAsObservable().LoadAssetBundle().ContinueWith(bundle =>
 				{
 					manifestBundle = bundle;
 					return bundle.LoadAssetAsync<AssetBundleManifest>("AssetBundleManifest")
