@@ -70,6 +70,7 @@
 						File.Delete(SavePath);
 						File.Move(tempPath, SavePath);
 						ETag = req.GetETag();
+						LastModified = req.GetLastModified();
 						AfterSave?.Invoke(this);
 					}
 					else

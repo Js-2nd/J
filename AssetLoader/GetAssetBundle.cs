@@ -30,7 +30,8 @@ namespace J
 					return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
 						.SendAsObservable().Select(req => save(req, version));
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(unchecked(version + 1)), 0)
-					.SendAsObservable(PlayerPrefs.GetString(eTagKey)).ContinueWith(req =>
+					.SendAsObservable(new UnityWebRequestSendOptions().SetETag(PlayerPrefs.GetString(eTagKey)))
+					.ContinueWith(req =>
 					{
 						if (req.responseCode == 304)
 							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
@@ -49,7 +50,7 @@ namespace J
 				string uri = RootUrl + actualName;
 				var hash = Manifest.GetAssetBundleHash(actualName);
 				return UnityWebRequestAssetBundle.GetAssetBundle(uri, hash, 0)
-					.SendAsObservable(progress).LoadAssetBundle();
+					.SendAsObservable(progress: progress).LoadAssetBundle();
 			});
 		}
 

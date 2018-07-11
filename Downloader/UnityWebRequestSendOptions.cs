@@ -3,6 +3,7 @@
 	public interface IUnityWebRequestSendOptions
 	{
 		string ETag { get; }
+		string LastModified { get; }
 		bool ThrowNetworkError { get; }
 		bool ThrowHttpError { get; }
 		bool AutoDispose { get; }
@@ -13,6 +14,7 @@
 	public class UnityWebRequestSendOptions<T> : IUnityWebRequestSendOptions where T : UnityWebRequestSendOptions<T>
 	{
 		public string ETag { get; set; }
+		public string LastModified { get; set; }
 		public bool ThrowNetworkError { get; set; } = true;
 		public bool ThrowHttpError { get; set; } = true;
 		public bool AutoDispose { get; set; } = true;
@@ -20,6 +22,11 @@
 		public T SetETag(string eTag)
 		{
 			ETag = eTag;
+			return (T)this;
+		}
+		public T SetLastModified(string lastModified)
+		{
+			LastModified = lastModified;
 			return (T)this;
 		}
 		public T SetThrowNetworkError(bool throwNetworkError)

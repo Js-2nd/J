@@ -9,33 +9,27 @@
 	public static partial class ExtensionMethods
 	{
 		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
-			IUnityWebRequestSendOptions options, IProgress<float> progress = null) => request.SendAsObservable(
-			options.ETag, progress, options.ThrowNetworkError, options.ThrowHttpError, options.AutoDispose);
-		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request,
-			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
-			bool autoDispose = true) =>
-			request.SendAsObservable(null, progress, throwNetworkError, throwHttpError, autoDispose);
-		public static IObservable<UnityWebRequest> SendAsObservable(this UnityWebRequest request, string eTag,
-			IProgress<float> progress = null, bool throwNetworkError = true, bool throwHttpError = true,
-			bool autoDispose = true)
+			IUnityWebRequestSendOptions options = null, IProgress<float> progress = null)
 		{
 			if (request == null) throw new ArgumentNullException(nameof(request));
+			if (options == null) options = new UnityWebRequestSendOptions();
 			return Observable.Defer(() =>
 			{
-				if (eTag != null) request.SetIfNoneMatch(eTag);
+				if (options.ETag != null) request.SetIfNoneMatch(options.ETag);
+				if (options.LastModified != null) request.SetIfModifiedSince(options.LastModified);
 				var stream = request.SendWebRequest()
 					.AsAsyncOperationObservable(progress)
 					.Select(op =>
 					{
 						var req = op.webRequest;
-						if (eTag == null || req.responseCode != 304)
+						if (req.responseCode != 304)
 						{
-							if (req.isNetworkError && throwNetworkError) throw new NetworkException(req);
-							if (req.isHttpError && throwHttpError) throw new HttpException(req);
+							if (req.isNetworkError && options.ThrowNetworkError) throw new NetworkException(req);
+							if (req.isHttpError && options.ThrowHttpError) throw new HttpException(req);
 						}
 						return req;
 					});
-				if (autoDispose) stream = stream.Finally(request.Dispose);
+				if (options.AutoDispose) stream = stream.Finally(request.Dispose);
 				return stream;
 			});
 		}
