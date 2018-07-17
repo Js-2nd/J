@@ -18,13 +18,14 @@
 
 		public void Dispose() => subject.Dispose();
 
-		public BundleReference CreateReference()
+		public IObservable<BundleReference> CreateReference()
 		{
-			RefCount++;
-			return new BundleReference(subject, Disposable.Create(OnDisposeReference));
+			return subject.Select(bundle =>
+			{
+				RefCount++;
+				return new BundleReference(bundle, Disposable.Create(() => RefCount--));
+			});
 		}
-
-		void OnDisposeReference() => RefCount--;
 	}
 
 	public class BundleReference : IDisposable

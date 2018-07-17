@@ -78,7 +78,7 @@
 		{
 			m_ManifestStatus.Dispose();
 			foreach (var cache in m_BundleCaches.Values)
-				cache.Subject.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
+				cache.subject.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
 			base.SingletonOnDestroy();
 		}
 	}

@@ -10,24 +10,35 @@
 
 	partial class AssetLoaderInstance
 	{
-		static readonly HashSet<Object> Collector = new HashSet<Object>(); // FIXME
+		public static int LoadConcurrent = 4;
 
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(bundle =>
+			List<BundleReference> list = null;
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				string actualName = NormToActualName(entry.NormBundleName);
+				var dep = Manifest.GetAllDependencies(actualName);
+				list = new List<BundleReference>(dep.Length + 1) { GetAssetBundle(actualName) };
+				list.AddRange(dep.Select(GetAssetBundle));
+				return list.Merge(LoadConcurrent).AsSingleUnitObservable();
+			}).ContinueWith(_ => list[0]).ContinueWith(bundle =>
 			{
 				switch (entry.LoadMethod)
 				{
 					case LoadMethod.Single:
 						return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().Select(req => req.asset)
-							.Do(obj => Collector.Add(obj));
+							.AsAsyncOperationObservable().Select(req => req.asset);
 					case LoadMethod.Multi:
 						return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().SelectMany(req => req.allAssets)
-							.Do(obj => Collector.Add(obj));
+							.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
 					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
 				}
+			}).Finally(() =>
+			{
+				if (list == null) return;
+				foreach (var reference in list)
+					reference.Dispose();
 			});
 		}
 

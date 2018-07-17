@@ -43,59 +43,40 @@ namespace J
 
 		string NormToActualName(string normBundleName) => m_NormToActual.GetOrDefault(normBundleName, normBundleName); // TODO return null
 
-		IObservable<AssetBundle> GetAssetBundleCore(string actualName, IProgress<float> progress = null)
+		IObservable<AssetBundle> GetAssetBundleCore(string actualName)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
-			{
-				string url = RootUrl + actualName;
-				var hash = Manifest.GetAssetBundleHash(actualName);
-				return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
-					.SendAsObservable(progress: progress).LoadAssetBundle();
-			});
+			ThrowIfManifestNotLoaded();
+			string url = RootUrl + actualName;
+			var hash = Manifest.GetAssetBundleHash(actualName);
+			return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0).SendAsObservable().LoadAssetBundle();
 		}
 
-		IObservable<BundleCache> GetAssetBundle(string actualName)
+		IObservable<BundleReference> GetAssetBundle(string actualName)
 		{
-			return Observable.Defer(() =>
+			ThrowIfManifestNotLoaded();
+			BundleCache cache;
+			if (!m_BundleCaches.TryGetValue(actualName, out cache))
 			{
-				BundleCache cache;
-				if (!m_BundleCaches.TryGetValue(actualName, out cache))
-				{
-					cache = new BundleCache
-					{
-						Subject = new AsyncSubject<AssetBundle>(),
-					};
-					m_BundleCaches.Add(actualName, cache);
-					GetAssetBundleCore(actualName)
-						.DoOnError(ex => m_BundleCaches.Remove(actualName))
-						.Subscribe(cache.Subject);
-				}
-				cache.RefCount++;
-				return Observable.Return(cache);
-			});
+				cache = new BundleCache();
+				m_BundleCaches.Add(actualName, cache);
+				GetAssetBundleCore(actualName)
+					.DoOnError(ex => m_BundleCaches.Remove(actualName))
+					.Subscribe(cache);
+			}
+			return cache.CreateReference();
 		}
-		public IObservable<BundleCache> GetAssetBundle(BundleEntry entry)
+
+		public IObservable<BundleReference> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
 		{
+			List<BundleReference> list = null;
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				string actualName = NormToActualName(entry.NormName);
-				return GetAssetBundle(actualName);
-			});
-		}
-
-		public IObservable<AssetBundle> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
-		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
-			{
-				AssetBundle entryBundle = null;
-				string actualName = NormToActualName(entry.NormName);
-				var dep = Manifest.GetAllDependencies(actualName).Select(GetAssetBundle);
-				return GetAssetBundle(actualName)
-					.Do(bundle => entryBundle = bundle)
-					.ToSingleEnumerable().Concat(dep)
-					.Merge(maxConcurrent).AsSingleUnitObservable()
-					.Select(__ => entryBundle);
-			});
+				var dep = Manifest.GetAllDependencies(actualName);
+				list = new List<BundleReference>(dep.Length + 1) { GetAssetBundle(actualName) };
+				list.AddRange(dep.Select(GetAssetBundle));
+				return list.Merge(LoadConcurrent).AsSingleUnitObservable();
+			}).Select(_ => new BundleReference(list[0], null));
 		}
 	}
 
