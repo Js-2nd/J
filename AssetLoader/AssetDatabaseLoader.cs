@@ -34,7 +34,7 @@ namespace J
 				string path = getAssetPaths(entry.NormBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
 					return Observable.Throw<UnityEngine.Object>(
-						new FileNotFoundException($"Asset not found. {entry}"),
+						new FileNotFoundException("Asset not found. " + entry),
 						Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)
 				{
