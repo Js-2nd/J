@@ -49,16 +49,22 @@
 			}
 		}
 
+		public ManifestStatus ManifestStatus
+		{
+			get { return m_ManifestStatus?.Value ?? ManifestStatus.NotLoaded; }
+			private set { if (m_ManifestStatus != null) m_ManifestStatus.Value = value; }
+		}
+
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
 		Dictionary<string, string> m_NormToActual;
-		Dictionary<string, AsyncSubject<AssetBundle>> m_BundleCache;
+		Dictionary<string, BundleCache> m_BundleCaches;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
 			m_NormToActual = new Dictionary<string, string>();
-			m_BundleCache = new Dictionary<string, AsyncSubject<AssetBundle>>();
+			m_BundleCaches = new Dictionary<string, BundleCache>();
 			UpdateLoadMethod();
 			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
 		}
@@ -71,8 +77,8 @@
 		protected override void SingletonOnDestroy()
 		{
 			m_ManifestStatus.Dispose();
-			foreach (var cache in m_BundleCache.Values)
-				cache.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
+			foreach (var cache in m_BundleCaches.Values)
+				cache.Subject.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
 			base.SingletonOnDestroy();
 		}
 	}
@@ -98,6 +104,8 @@
 			get { return Instance.PresetManifestUrl; }
 			set { Instance.PresetManifestUrl = value; }
 		}
+
+		public static ManifestStatus ManifestStatus => Instance.ManifestStatus;
 	}
 
 	namespace Internal

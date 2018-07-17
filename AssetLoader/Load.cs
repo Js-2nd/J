@@ -2,6 +2,8 @@
 {
 	using J.Internal;
 	using System;
+	using System.Linq;
+	using UnityEngine;
 	using System.Collections.Generic;
 	using UniRx;
 	using Object = UnityEngine.Object;

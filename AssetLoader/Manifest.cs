@@ -28,7 +28,7 @@ namespace J
 			}
 			return Observable.Defer(() =>
 			{
-				m_ManifestStatus.Value = ManifestStatus.Loading;
+				ManifestStatus = ManifestStatus.Loading;
 				//RequestInfo requestInfo = null;
 				RequestInfo requestInfo = new RequestInfo(null, 0);
 				AssetBundle manifestBundle = null;
@@ -52,8 +52,8 @@ namespace J
 				}).Finally(() =>
 				{
 					if (manifestBundle != null) manifestBundle.Unload(false);
-					if (m_ManifestStatus.Value == ManifestStatus.Loading)
-						m_ManifestStatus.Value = Manifest != null ? ManifestStatus.Loaded : ManifestStatus.NotLoaded;
+					if (ManifestStatus == ManifestStatus.Loading)
+						ManifestStatus = Manifest != null ? ManifestStatus.Loaded : ManifestStatus.NotLoaded;
 				});
 			});
 		}
@@ -64,7 +64,7 @@ namespace J
 			Manifest = manifest;
 			ManifestVersion = version;
 			CreateNormToActualNameDict();
-			m_ManifestStatus.Value = ManifestStatus.Loaded;
+			ManifestStatus = ManifestStatus.Loaded;
 		}
 
 		void CreateNormToActualNameDict()
@@ -80,6 +80,7 @@ namespace J
 
 		string ActualToNormName(string actualName)
 		{
+			ThrowIfManifestNotLoaded();
 			string hash = Manifest.GetAssetBundleHash(actualName).ToString();
 			if (actualName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
 				return actualName.Substring(0, actualName.Length - hash.Length - 1);
@@ -90,9 +91,9 @@ namespace J
 		{
 			return Observable.Defer(() =>
 			{
-				if (m_ManifestStatus.Value == ManifestStatus.Loaded)
+				if (ManifestStatus == ManifestStatus.Loaded)
 					return Observable.ReturnUnit();
-				if (m_ManifestStatus.Value == ManifestStatus.NotLoaded && (autoLoad ?? AutoLoadManifest))
+				if (ManifestStatus == ManifestStatus.NotLoaded && (autoLoad ?? AutoLoadManifest))
 					LoadManifest().Subscribe();
 				return m_ManifestStatus.FirstOrEmpty(status =>
 				{
@@ -101,6 +102,12 @@ namespace J
 					return status == ManifestStatus.Loaded;
 				}).AsUnitObservable();
 			});
+		}
+
+		void ThrowIfManifestNotLoaded()
+		{
+			if (ManifestStatus != ManifestStatus.Loaded)
+				throw new InvalidOperationException("AssetBundleManifest not loaded.");
 		}
 	}
 
