@@ -52,8 +52,8 @@
 
 		public ManifestStatus ManifestStatus
 		{
-			get { return m_ManifestStatus?.Value ?? ManifestStatus.NotLoaded; }
-			private set { if (m_ManifestStatus != null) m_ManifestStatus.Value = value; }
+			get { return m_ManifestStatus.Value; }
+			private set { m_ManifestStatus.Value = value; }
 		}
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
@@ -91,6 +91,7 @@
 
 		public void UnloadUnusedBundles(bool unloadAssets) // TODO async?
 		{
+			if (m_BundleCaches.Count <= 0) return;
 			var oldCaches = m_BundleCaches;
 			m_BundleCaches = new Dictionary<string, BundleCache>();
 			foreach (var item in oldCaches)
@@ -133,7 +134,7 @@
 			set { Instance.PresetManifestUrl = value; }
 		}
 
-		public static ManifestStatus ManifestStatus => Instance.ManifestStatus;
+		public static ManifestStatus ManifestStatus => Instance ? Instance.ManifestStatus : ManifestStatus.NotLoaded;
 	}
 
 	namespace Internal

@@ -9,22 +9,9 @@
 	{
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			BundleReference reference = null;
-			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(r =>
-			{
-				reference = r;
-				var bundle = reference.Bundle;
-				switch (entry.LoadMethod)
-				{
-					case LoadMethod.Single:
-						return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().Select(req => req.asset);
-					case LoadMethod.Multi:
-						return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
-					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
-				}
-			}).Finally(() => reference?.Dispose());
+			return WaitForManifestLoaded().ContinueWith(_ =>
+				GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(reference =>
+					entry.LoadFrom(reference.Bundle).Finally(reference.Dispose)));
 		}
 
 		public LoadAssetDelegate Load { get; private set; }

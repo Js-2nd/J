@@ -51,22 +51,19 @@ namespace J
 			return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0).SendAsObservable().LoadAssetBundle();
 		}
 
-		IObservable<BundleReference> GetAssetBundle(string actualName)
+		IObservable<BundleReference> GetAssetBundle(string actualName) => Observable.Defer(() =>
 		{
-			return Observable.Defer(() =>
+			BundleCache cache;
+			if (!m_BundleCaches.TryGetValue(actualName, out cache))
 			{
-				BundleCache cache;
-				if (!m_BundleCaches.TryGetValue(actualName, out cache))
-				{
-					cache = new BundleCache(actualName);
-					m_BundleCaches.Add(actualName, cache);
-					GetAssetBundleCore(actualName)
-						.DoOnError(ex => m_BundleCaches.Remove(actualName))
-						.Subscribe(cache);
-				}
-				return cache.GetReference();
-			});
-		}
+				cache = new BundleCache(actualName);
+				m_BundleCaches.Add(actualName, cache);
+				GetAssetBundleCore(actualName)
+					.DoOnError(ex => m_BundleCaches.Remove(actualName))
+					.Subscribe(cache);
+			}
+			return cache.GetReference();
+		});
 
 		public IObservable<BundleReference> GetAssetBundle(BundleEntry entry)
 		{
@@ -81,6 +78,8 @@ namespace J
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
+				if (!ManifestContains(entry))
+					return Observable.Throw<BundleReference>(new AssetNotFoundException(entry));
 				string actualName = NormToActualName(entry.NormName);
 				var dependencies = Manifest.GetAllDependencies(actualName);
 				var cancel = new CompositeDisposable(dependencies.Length + 1);

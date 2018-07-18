@@ -6,7 +6,6 @@ namespace J
 {
 	using J.Internal;
 	using System;
-	using System.IO;
 	using System.Linq;
 	using UniRx;
 
@@ -34,7 +33,7 @@ namespace J
 				string path = getAssetPaths(entry.NormBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
 					return Observable.Throw<UnityEngine.Object>(
-						new FileNotFoundException("Asset not found. " + entry),
+						new AssetNotFoundException(entry),
 						Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)
 				{

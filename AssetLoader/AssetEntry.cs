@@ -1,6 +1,9 @@
 ﻿namespace J
 {
 	using System;
+	using UniRx;
+	using UnityEngine;
+	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
 	{
@@ -23,11 +26,26 @@
 		{
 			BundleEntry = new BundleEntry(bundleName);
 			AssetName = assetName ?? AssetLoaderInstance.DefaultAssetName(NormBundleName);
-			AssetType = assetType ?? typeof(UnityEngine.Object);
+			AssetType = assetType ?? typeof(Object);
 			LoadMethod = loadMethod ?? LoadMethod.Single;
 		}
 
-		public override string ToString() => $"[{LoadMethod}]{BundleEntry}<{AssetType}>{AssetName}";
+		public override string ToString() => $"{BundleEntry}<{AssetType}>{AssetName}";
+
+		public IObservable<Object> LoadFrom(AssetBundle bundle) => Observable.Defer(() =>
+		{
+			if (bundle == null) throw new ArgumentNullException(nameof(bundle));
+			switch (LoadMethod)
+			{
+				case LoadMethod.Single:
+					return bundle.LoadAssetAsync(AssetName, AssetType)
+						.AsAsyncOperationObservable().Select(req => req.asset);
+				case LoadMethod.Multi:
+					return bundle.LoadAssetWithSubAssetsAsync(AssetName, AssetType)
+						.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
+				default: throw new ArgumentException("Unknown LoadMethod. " + LoadMethod);
+			}
+		});
 	}
 
 	public enum LoadMethod

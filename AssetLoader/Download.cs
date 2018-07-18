@@ -13,7 +13,7 @@
 		{
 			return WaitForManifestLoaded().Select(_ =>
 			{
-				var actualNames = bundleNames.Select(NormBundleName).Select(NormToActualName);
+				var actualNames = bundleNames.Select(NormBundleName).Where(ManifestContains).Select(NormToActualName);
 				if (includeDependencies)
 					actualNames = actualNames.SelectMany(actualName =>
 						actualName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(actualName)));

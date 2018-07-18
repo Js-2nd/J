@@ -25,17 +25,14 @@
 
 		public void Dispose() => subject.Dispose();
 
-		public IObservable<BundleReference> GetReference()
+		public IObservable<BundleReference> GetReference() => Observable.Defer(() =>
 		{
-			return Observable.Defer(() =>
-			{
-				RefCount++;
-				var cancel = Disposable.Create(() => RefCount--);
-				return subject.Select(bundle => new BundleReference(bundle, cancel))
-					.DoOnError(_ => cancel.Dispose())
-					.DoOnCancel(() => cancel.Dispose());
-			});
-		}
+			RefCount++;
+			var cancel = Disposable.Create(() => RefCount--);
+			return subject.Select(bundle => new BundleReference(bundle, cancel))
+				.DoOnError(_ => cancel.Dispose())
+				.DoOnCancel(() => cancel.Dispose());
+		});
 	}
 
 	public class BundleReference : IDisposable
