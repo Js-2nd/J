@@ -4,6 +4,7 @@
 	using System.Collections.Generic;
 	using UniRx;
 	using UnityEngine;
+	using UnityEngine.SceneManagement;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
@@ -67,6 +68,7 @@
 			m_BundleCaches = new Dictionary<string, BundleCache>();
 			UpdateLoadMethod();
 			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
+			SceneManager.activeSceneChanged += OnChangeScene;
 		}
 
 		void OnValidate()
@@ -76,10 +78,36 @@
 
 		protected override void SingletonOnDestroy()
 		{
+			SceneManager.activeSceneChanged -= OnChangeScene;
+			UnloadUnusedBundles(UnloadAssetsOnDestroy);
 			m_ManifestStatus.Dispose();
-			foreach (var cache in m_BundleCaches.Values)
-				cache.subject.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
 			base.SingletonOnDestroy();
+		}
+
+		void OnChangeScene(Scene from, Scene to)
+		{
+			UnloadUnusedBundles(false);
+		}
+
+		public void UnloadUnusedBundles(bool unloadAssets) // TODO async?
+		{
+			var oldCaches = m_BundleCaches;
+			m_BundleCaches = new Dictionary<string, BundleCache>();
+			foreach (var item in oldCaches)
+			{
+				var cache = item.Value;
+				if (cache.RefCount > 0)
+				{
+					m_BundleCaches.Add(item.Key, cache);
+					continue;
+				}
+				cache.GetReference().CatchIgnore().Subscribe(reference =>
+				{
+					try { reference.Bundle.Unload(unloadAssets); }
+					finally { reference.Dispose(); }
+				});
+			}
+			oldCaches.Clear();
 		}
 	}
 

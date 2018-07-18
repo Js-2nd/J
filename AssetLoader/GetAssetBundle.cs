@@ -41,7 +41,7 @@ namespace J
 			});
 		}
 
-		string NormToActualName(string normBundleName) => m_NormToActual.GetOrDefault(normBundleName, normBundleName); // TODO return null
+		string NormToActualName(string normBundleName) => m_NormToActual.GetOrDefault(normBundleName, normBundleName);
 
 		IObservable<AssetBundle> GetAssetBundleCore(string actualName)
 		{
@@ -53,34 +53,67 @@ namespace J
 
 		IObservable<BundleReference> GetAssetBundle(string actualName)
 		{
-			ThrowIfManifestNotLoaded();
-			BundleCache cache;
-			if (!m_BundleCaches.TryGetValue(actualName, out cache))
+			return Observable.Defer(() =>
 			{
-				cache = new BundleCache();
-				m_BundleCaches.Add(actualName, cache);
-				GetAssetBundleCore(actualName)
-					.DoOnError(ex => m_BundleCaches.Remove(actualName))
-					.Subscribe(cache);
-			}
-			return cache.CreateReference();
+				BundleCache cache;
+				if (!m_BundleCaches.TryGetValue(actualName, out cache))
+				{
+					cache = new BundleCache(actualName);
+					m_BundleCaches.Add(actualName, cache);
+					GetAssetBundleCore(actualName)
+						.DoOnError(ex => m_BundleCaches.Remove(actualName))
+						.Subscribe(cache);
+				}
+				return cache.GetReference();
+			});
+		}
+
+		public IObservable<BundleReference> GetAssetBundle(BundleEntry entry)
+		{
+			return WaitForManifestLoaded().ContinueWith(_ =>
+			{
+				string actualName = NormToActualName(entry.NormName);
+				return GetAssetBundle(actualName);
+			});
 		}
 
 		public IObservable<BundleReference> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
 		{
-			List<BundleReference> list = null;
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
 				string actualName = NormToActualName(entry.NormName);
-				var dep = Manifest.GetAllDependencies(actualName);
-				list = new List<BundleReference>(dep.Length + 1) { GetAssetBundle(actualName) };
-				list.AddRange(dep.Select(GetAssetBundle));
-				return list.Merge(LoadConcurrent).AsSingleUnitObservable();
-			}).Select(_ => new BundleReference(list[0], null));
+				var dependencies = Manifest.GetAllDependencies(actualName);
+				var cancel = new CompositeDisposable(dependencies.Length + 1);
+				BundleReference entryReference = null;
+				return GetAssetBundle(actualName)
+					.Do(reference =>
+					{
+						if (reference == null) return;
+						entryReference = reference;
+						cancel.Add(reference);
+					})
+					.ToSingleEnumerable()
+					.Concat(dependencies.Select(dep => GetAssetBundle(dep).Do(reference =>
+					{
+						if (reference == null) return;
+						cancel.Add(reference);
+					})))
+					.Merge(maxConcurrent)
+					.AsSingleUnitObservable()
+					.Where(__ =>
+					{
+						if (entryReference != null) return true;
+						cancel.Dispose();
+						return false;
+					})
+					.Select(__ => new BundleReference(entryReference.Bundle, cancel))
+					.DoOnError(__ => cancel.Dispose())
+					.DoOnCancel(() => cancel.Dispose());
+			});
 		}
 	}
 
-	public class RequestInfo
+	public class RequestInfo // TODO
 	{
 		public UnityWebRequest Request { get; }
 		public int Version { get; }
@@ -92,16 +125,16 @@ namespace J
 		}
 	}
 
-	//partial class AssetLoader
-	//{
-	//	public static IObservable<RequestInfo>
-	//		SendAssetBundleRequest(string uri, string versionKey, string eTagKey) =>
-	//		AssetLoaderInstance.SendAssetBundleRequest(uri, versionKey, eTagKey);
+	partial class AssetLoader
+	{
+		//public static IObservable<RequestInfo>
+		//	SendAssetBundleRequest(string uri, string versionKey, string eTagKey) =>
+		//	AssetLoaderInstance.SendAssetBundleRequest(uri, versionKey, eTagKey);
 
-	//	public static IObservable<AssetBundle> GetAssetBundle(string bundleName) =>
-	//		Instance.GetAssetBundle(new BundleEntry(bundleName));
+		public static IObservable<BundleReference> GetAssetBundle(string bundleName) =>
+			Instance.GetAssetBundle(new BundleEntry(bundleName));
 
-	//	public static IObservable<AssetBundle> GetAssetBundleWithDependencies(string bundleName) =>
-	//		Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
-	//}
+		public static IObservable<BundleReference> GetAssetBundleWithDependencies(string bundleName) =>
+			Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
+	}
 }

@@ -80,7 +80,6 @@ namespace J
 
 		string ActualToNormName(string actualName)
 		{
-			ThrowIfManifestNotLoaded();
 			string hash = Manifest.GetAssetBundleHash(actualName).ToString();
 			if (actualName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
 				return actualName.Substring(0, actualName.Length - hash.Length - 1);

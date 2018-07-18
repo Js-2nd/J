@@ -6,45 +6,50 @@
 
 	public class BundleCache : IObserver<AssetBundle>, IDisposable
 	{
+		public string Name { get; }
+
 		public int RefCount { get; private set; }
 
 		readonly AsyncSubject<AssetBundle> subject = new AsyncSubject<AssetBundle>();
 
-		public void OnNext(AssetBundle value) => subject.OnNext(value);
+		public BundleCache(string name)
+		{
+			Name = name;
+		}
 
-		public void OnError(Exception error) => subject.OnError(error);
+		void IObserver<AssetBundle>.OnNext(AssetBundle value) => subject.OnNext(value);
 
-		public void OnCompleted() => subject.OnCompleted();
+		void IObserver<AssetBundle>.OnError(Exception error) => subject.OnError(error);
+
+		void IObserver<AssetBundle>.OnCompleted() => subject.OnCompleted();
 
 		public void Dispose() => subject.Dispose();
 
-		public IObservable<BundleReference> CreateReference()
+		public IObservable<BundleReference> GetReference()
 		{
-			return subject.Select(bundle =>
+			return Observable.Defer(() =>
 			{
 				RefCount++;
-				return new BundleReference(bundle, Disposable.Create(() => RefCount--));
+				var cancel = Disposable.Create(() => RefCount--);
+				return subject.Select(bundle => new BundleReference(bundle, cancel))
+					.DoOnError(_ => cancel.Dispose())
+					.DoOnCancel(() => cancel.Dispose());
 			});
 		}
 	}
 
 	public class BundleReference : IDisposable
 	{
-		readonly AssetBundle bundle;
-		//readonly IObservable<AssetBundle> observable;
-		readonly IDisposable disposable;
+		public AssetBundle Bundle { get; }
 
-		public BundleReference(AssetBundle bundle, IDisposable disposable)
+		readonly IDisposable cancel;
+
+		public BundleReference(AssetBundle bundle, IDisposable cancel)
 		{
-			this.bundle = bundle;
-			//this.observable = observable;
-			this.disposable = disposable;
+			Bundle = bundle;
+			this.cancel = cancel;
 		}
 
-		//public IDisposable Subscribe(IObserver<AssetBundle> observer) => observable.Subscribe(observer);
-
-		public AssetBundle Bundle => bundle;
-
-		public void Dispose() => disposable.Dispose();
+		public void Dispose() => cancel?.Dispose();
 	}
 }

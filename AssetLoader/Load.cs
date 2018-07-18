@@ -2,28 +2,18 @@
 {
 	using J.Internal;
 	using System;
-	using System.Linq;
-	using UnityEngine;
-	using System.Collections.Generic;
 	using UniRx;
 	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
 	{
-		public static int LoadConcurrent = 4;
-
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			List<BundleReference> list = null;
-			return WaitForManifestLoaded().ContinueWith(_ =>
+			BundleReference reference = null;
+			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(r =>
 			{
-				string actualName = NormToActualName(entry.NormBundleName);
-				var dep = Manifest.GetAllDependencies(actualName);
-				list = new List<BundleReference>(dep.Length + 1) { GetAssetBundle(actualName) };
-				list.AddRange(dep.Select(GetAssetBundle));
-				return list.Merge(LoadConcurrent).AsSingleUnitObservable();
-			}).ContinueWith(_ => list[0]).ContinueWith(bundle =>
-			{
+				reference = r;
+				var bundle = reference.Bundle;
 				switch (entry.LoadMethod)
 				{
 					case LoadMethod.Single:
@@ -34,12 +24,7 @@
 							.AsAsyncOperationObservable().SelectMany(req => req.allAssets);
 					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
 				}
-			}).Finally(() =>
-			{
-				if (list == null) return;
-				foreach (var reference in list)
-					reference.Dispose();
-			});
+			}).Finally(() => reference?.Dispose());
 		}
 
 		public LoadAssetDelegate Load { get; private set; }
