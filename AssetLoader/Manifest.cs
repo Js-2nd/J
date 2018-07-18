@@ -15,6 +15,12 @@ namespace J
 		public const string ManifestVersionKey = "AssetLoader.ManifestVersion";
 		public const string ManifestETagKey = "AssetLoader.ManifestETag";
 
+		public ManifestStatus ManifestStatus
+		{
+			get { return m_ManifestStatus.Value; }
+			private set { m_ManifestStatus.Value = value; }
+		}
+
 		public AssetBundleManifest Manifest { get; private set; }
 		public int ManifestVersion { get; private set; }
 		public string RootUrl { get; set; }
@@ -22,12 +28,12 @@ namespace J
 		public IObservable<Unit> LoadManifest(string url = null, bool? setRootUrl = null) => Observable.Defer(() =>
 		{
 			// TODO
+			ManifestStatus = ManifestStatus.Loading;
 			if (string.IsNullOrEmpty(url))
 			{
 				url = PresetManifestUrl;
 				if (string.IsNullOrEmpty(url)) url = "/";
 			}
-			ManifestStatus = ManifestStatus.Loading;
 			//RequestInfo requestInfo = null;
 			RequestInfo requestInfo = new RequestInfo(null, 0);
 			AssetBundle manifestBundle = null;
@@ -56,9 +62,10 @@ namespace J
 			});
 		});
 
-		void SetManifest(AssetBundleManifest manifest, int version) // TODO clear bundle cache?
+		void SetManifest(AssetBundleManifest manifest, int version)
 		{
 			if (manifest == null) throw new ArgumentNullException(nameof(manifest));
+			UnloadUnusedBundles(false);
 			Manifest = manifest;
 			ManifestVersion = version;
 			CreateNormToActualNameDict();
@@ -69,11 +76,8 @@ namespace J
 		{
 			m_NormToActual.Clear();
 			var all = Manifest.GetAllAssetBundles();
-			for (int i = 0; i < all.Length; i++)
-			{
-				string actualName = all[i];
+			foreach (string actualName in all)
 				m_NormToActual.Add(ActualToNormName(actualName), actualName);
-			}
 		}
 
 		string ActualToNormName(string actualName)
@@ -98,18 +102,18 @@ namespace J
 			}).AsUnitObservable();
 		});
 
-		void ThrowIfManifestNotLoaded()
-		{
-			if (ManifestStatus != ManifestStatus.Loaded)
-				throw new InvalidOperationException("AssetBundleManifest not loaded.");
-		}
-
+		public bool ManifestContains(BundleEntry entry) => ManifestContains(entry.NormName);
 		bool ManifestContains(string normBundleName)
 		{
 			ThrowIfManifestNotLoaded();
 			return m_NormToActual.ContainsKey(normBundleName);
 		}
-		public bool ManifestContains(BundleEntry entry) => ManifestContains(entry.NormName);
+
+		void ThrowIfManifestNotLoaded()
+		{
+			if (ManifestStatus != ManifestStatus.Loaded)
+				throw new InvalidOperationException("AssetBundleManifest not loaded.");
+		}
 	}
 
 	public enum ManifestStatus
@@ -121,6 +125,8 @@ namespace J
 
 	partial class AssetLoader
 	{
+		public static ManifestStatus ManifestStatus => Instance ? Instance.ManifestStatus : ManifestStatus.NotLoaded;
+
 		public static AssetBundleManifest Manifest => Instance.Manifest;
 
 		public static int ManifestVersion => Instance.ManifestVersion;

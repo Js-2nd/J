@@ -50,12 +50,6 @@
 			}
 		}
 
-		public ManifestStatus ManifestStatus
-		{
-			get { return m_ManifestStatus.Value; }
-			private set { m_ManifestStatus.Value = value; }
-		}
-
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
 		Dictionary<string, string> m_NormToActual;
 		Dictionary<string, BundleCache> m_BundleCaches;
@@ -133,8 +127,6 @@
 			get { return Instance.PresetManifestUrl; }
 			set { Instance.PresetManifestUrl = value; }
 		}
-
-		public static ManifestStatus ManifestStatus => Instance ? Instance.ManifestStatus : ManifestStatus.NotLoaded;
 	}
 
 	namespace Internal

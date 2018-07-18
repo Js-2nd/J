@@ -78,7 +78,7 @@ namespace J
 		{
 			return WaitForManifestLoaded().ContinueWith(_ =>
 			{
-				if (!ManifestContains(entry))
+				if (!ManifestContains(entry)) // TODO throw directly https://github.com/neuecc/UniRx/issues/311
 					return Observable.Throw<BundleReference>(new AssetNotFoundException(entry));
 				string actualName = NormToActualName(entry.NormName);
 				var dependencies = Manifest.GetAllDependencies(actualName);
