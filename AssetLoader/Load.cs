@@ -1,6 +1,5 @@
 ﻿namespace J
 {
-	using J.Internal;
 	using System;
 	using UniRx;
 	using Object = UnityEngine.Object;
@@ -14,7 +13,7 @@
 					entry.LoadFrom(reference.Bundle).Finally(reference.Dispose)));
 		}
 
-		public LoadAssetDelegate Load { get; private set; }
+		public LoadDelegate Load { get; private set; }
 
 		void UpdateLoadMethod()
 		{

@@ -4,16 +4,16 @@ using UnityEditor;
 
 namespace J
 {
-	using J.Internal;
 	using System;
 	using System.Linq;
 	using UniRx;
+	using static AssetLoaderInstance;
 
 	public static class AssetDatabaseLoader
 	{
 		public static readonly bool IsAvailable;
 		public static readonly GetAssetPathsDelegate GetAssetPaths;
-		public static readonly LoadAssetDelegate Load;
+		public static readonly LoadDelegate Load;
 
 		static AssetDatabaseLoader()
 		{
@@ -24,7 +24,7 @@ namespace J
 #endif
 		}
 
-		public static LoadAssetDelegate ToLoadDelegate(GetAssetPathsDelegate getAssetPaths)
+		public static LoadDelegate ToLoadDelegate(GetAssetPathsDelegate getAssetPaths)
 		{
 #if UNITY_EDITOR
 			if (getAssetPaths == null) throw new ArgumentNullException(nameof(getAssetPaths));

@@ -21,6 +21,37 @@ namespace J
 			private set { m_ManifestStatus.Value = value; }
 		}
 
+		public string PresetManifestUrl
+		{
+			get
+			{
+				return
+#if UNITY_EDITOR
+					EditorManifestUrl
+#elif UNITY_ANDROID
+					AndroidManifestUrl
+#elif UNITY_IOS
+					IosManifestUrl
+#else
+					StandaloneManifestUrl
+#endif
+					;
+			}
+			set
+			{
+#if UNITY_EDITOR
+				EditorManifestUrl
+#elif UNITY_ANDROID
+				AndroidManifestUrl
+#elif UNITY_IOS
+				IosManifestUrl
+#else
+				StandaloneManifestUrl
+#endif
+					= value;
+			}
+		}
+
 		public AssetBundleManifest Manifest { get; private set; }
 		public int ManifestVersion { get; private set; }
 		public string RootUrl { get; set; }
@@ -92,7 +123,7 @@ namespace J
 		{
 			if (ManifestStatus == ManifestStatus.Loaded)
 				return Observable.ReturnUnit();
-			if (ManifestStatus == ManifestStatus.NotLoaded && (autoLoad ?? AutoLoadManifest))
+			if (ManifestStatus == ManifestStatus.NotLoaded && (autoLoad ?? LoadManifestOnDemand))
 				LoadManifest().Subscribe();
 			return m_ManifestStatus.FirstOrEmpty(status =>
 			{
