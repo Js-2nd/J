@@ -4,63 +4,43 @@
 	using System.Collections.Generic;
 	using UniRx;
 	using UnityEngine;
+	using UnityEngine.SceneManagement;
 
 	public partial class AssetLoaderInstance : SingletonMonoBehaviour<AssetLoaderInstance>
 	{
+		public delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
+		public delegate IObservable<UnityEngine.Object> LoadDelegate(AssetEntry entry);
+
 		static readonly char[] Delimiters = { '/', '\\' };
 
-		[SerializeField] AssetSimulation m_Simulation;
-		[SerializeField] bool m_DontDestroyOnLoad = true;
-		public bool UnloadAssetsOnDestroy;
-		public bool AutoLoadManifest = true;
+		[SerializeField] AssetSimulation m_Simulation = AssetSimulation.AssetDatabase;
+		public bool LoadManifestOnDemand = true;
 		public string EditorManifestUrl;
 		public string StandaloneManifestUrl;
 		public string AndroidManifestUrl;
 		public string IosManifestUrl;
 
-		public string PresetManifestUrl
-		{
-			get
-			{
-				return
-#if UNITY_EDITOR
-					EditorManifestUrl
-#elif UNITY_ANDROID
-					AndroidManifestUrl
-#elif UNITY_IOS
-					IosManifestUrl
-#else
-					StandaloneManifestUrl
-#endif
-					;
-			}
-			set
-			{
-#if UNITY_EDITOR
-				EditorManifestUrl
-#elif UNITY_ANDROID
-				AndroidManifestUrl
-#elif UNITY_IOS
-				IosManifestUrl
-#else
-				StandaloneManifestUrl
-#endif
-					= value;
-			}
-		}
-
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
 		Dictionary<string, string> m_NormToActual;
-		Dictionary<string, AsyncSubject<AssetBundle>> m_BundleCache;
+		Dictionary<string, BundleCache> m_BundleCaches;
 
 		protected override void SingletonAwake()
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
 			m_NormToActual = new Dictionary<string, string>();
-			m_BundleCache = new Dictionary<string, AsyncSubject<AssetBundle>>();
+			m_BundleCaches = new Dictionary<string, BundleCache>();
 			UpdateLoadMethod();
-			if (m_DontDestroyOnLoad) DontDestroyOnLoad(gameObject);
+			DontDestroyOnLoad(transform.root);
+			SceneManager.activeSceneChanged += OnChangeScene;
+		}
+
+		protected override void SingletonOnDestroy()
+		{
+			SceneManager.activeSceneChanged -= OnChangeScene;
+			UnloadUnusedBundles();
+			m_ManifestStatus.Dispose();
+			base.SingletonOnDestroy();
 		}
 
 		void OnValidate()
@@ -68,12 +48,9 @@
 			if (Application.isPlaying) UpdateLoadMethod();
 		}
 
-		protected override void SingletonOnDestroy()
+		void OnChangeScene(Scene from, Scene to)
 		{
-			m_ManifestStatus.Dispose();
-			foreach (var cache in m_BundleCache.Values)
-				cache.Subscribe(bundle => bundle.Unload(UnloadAssetsOnDestroy));
-			base.SingletonOnDestroy();
+			UnloadUnusedBundles();
 		}
 	}
 
@@ -81,28 +58,10 @@
 	{
 		public static AssetLoaderInstance Instance => AssetLoaderInstance.Instance;
 
-		public static bool UnloadAssetsOnDestroy
+		public static bool LoadManifestOnDemand
 		{
-			get { return Instance.UnloadAssetsOnDestroy; }
-			set { Instance.UnloadAssetsOnDestroy = value; }
+			get { return Instance.LoadManifestOnDemand; }
+			set { Instance.LoadManifestOnDemand = value; }
 		}
-
-		public static bool AutoLoadManifest
-		{
-			get { return Instance.AutoLoadManifest; }
-			set { Instance.AutoLoadManifest = value; }
-		}
-
-		public static string PresetManifestUrl
-		{
-			get { return Instance.PresetManifestUrl; }
-			set { Instance.PresetManifestUrl = value; }
-		}
-	}
-
-	namespace Internal
-	{
-		public delegate string[] GetAssetPathsDelegate(string bundleName, string assetName);
-		public delegate IObservable<UnityEngine.Object> LoadAssetDelegate(AssetEntry entry);
 	}
 }

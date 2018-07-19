@@ -1,35 +1,19 @@
 ﻿namespace J
 {
-	using J.Internal;
 	using System;
-	using System.Collections.Generic;
 	using UniRx;
 	using Object = UnityEngine.Object;
 
 	partial class AssetLoaderInstance
 	{
-		static readonly HashSet<Object> Collector = new HashSet<Object>(); // FIXME
-
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			return GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(bundle =>
-			{
-				switch (entry.LoadMethod)
-				{
-					case LoadMethod.Single:
-						return bundle.LoadAssetAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().Select(req => req.asset)
-							.Do(obj => Collector.Add(obj));
-					case LoadMethod.Multi:
-						return bundle.LoadAssetWithSubAssetsAsync(entry.AssetName, entry.AssetType)
-							.AsAsyncOperationObservable().SelectMany(req => req.allAssets)
-							.Do(obj => Collector.Add(obj));
-					default: throw new ArgumentException("Unknown LoadMethod. " + entry.LoadMethod);
-				}
-			});
+			return WaitForManifestLoaded().ContinueWith(_ =>
+				GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(reference =>
+					entry.LoadFrom(reference.Bundle).Finally(reference.Dispose)));
 		}
 
-		public LoadAssetDelegate Load { get; private set; }
+		public LoadDelegate Load { get; private set; }
 
 		void UpdateLoadMethod()
 		{
@@ -69,7 +53,7 @@
 
 	partial class AssetLoader
 	{
-		public static bool IsSimulationEnabled => Instance.IsSimulationEnabled;
+		public static bool IsSimulationEnabled => Instance && Instance.IsSimulationEnabled;
 
 		public static IObservable<Object> Load(string bundleName, string assetName = null, Type assetType = null) =>
 			Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Single));

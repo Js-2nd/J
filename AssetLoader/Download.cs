@@ -13,7 +13,7 @@
 		{
 			return WaitForManifestLoaded().Select(_ =>
 			{
-				var actualNames = bundleNames.Select(NormBundleName).Select(NormToActualName);
+				var actualNames = bundleNames.Select(NormBundleName).Where(ManifestContains).Select(NormToActualName);
 				if (includeDependencies)
 					actualNames = actualNames.SelectMany(actualName =>
 						actualName.ToSingleEnumerable().Concat(Manifest.GetAllDependencies(actualName)));
@@ -29,7 +29,7 @@
 		}
 	}
 
-	public static partial class AssetLoader
+	partial class AssetLoader
 	{
 		public static IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
 			bool includeDependencies = true, BatchDownloader downloader = null) =>

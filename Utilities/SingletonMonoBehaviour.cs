@@ -15,7 +15,8 @@
 			}
 			else
 			{
-				Debug.LogWarningFormat("Destroy {0} on {1} since there is one on {2}.", typeof(T).Name, name, Instance.name);
+				string message = $"Destroy {typeof(T).Name} on {name} since there is one on {Instance.name}.";
+				Debug.LogWarning(message, gameObject);
 				Destroy(this);
 			}
 		}

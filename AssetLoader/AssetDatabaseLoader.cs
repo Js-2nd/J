@@ -4,28 +4,27 @@ using UnityEditor;
 
 namespace J
 {
-	using J.Internal;
 	using System;
-	using System.IO;
 	using System.Linq;
 	using UniRx;
+	using static AssetLoaderInstance;
 
 	public static class AssetDatabaseLoader
 	{
 		public static readonly bool IsAvailable;
 		public static readonly GetAssetPathsDelegate GetAssetPaths;
-		public static readonly LoadAssetDelegate Load;
+		public static readonly LoadDelegate Load;
 
 		static AssetDatabaseLoader()
 		{
 #if UNITY_EDITOR
 			IsAvailable = true;
 			GetAssetPaths = AssetDatabase.GetAssetPathsFromAssetBundleAndAssetName;
-			Load = ToLoadMethod(GetAssetPaths);
+			Load = ToLoadDelegate(GetAssetPaths);
 #endif
 		}
 
-		public static LoadAssetDelegate ToLoadMethod(GetAssetPathsDelegate getAssetPaths)
+		public static LoadDelegate ToLoadDelegate(GetAssetPathsDelegate getAssetPaths)
 		{
 #if UNITY_EDITOR
 			if (getAssetPaths == null) throw new ArgumentNullException(nameof(getAssetPaths));
@@ -34,7 +33,7 @@ namespace J
 				string path = getAssetPaths(entry.NormBundleName, entry.AssetName)?.FirstOrDefault();
 				if (string.IsNullOrEmpty(path))
 					return Observable.Throw<UnityEngine.Object>(
-						new FileNotFoundException($"Asset not found. {entry}"),
+						new AssetNotFoundException(entry),
 						Scheduler.MainThreadIgnoreTimeScale);
 				switch (entry.LoadMethod)
 				{
