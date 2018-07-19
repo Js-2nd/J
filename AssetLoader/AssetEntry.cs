@@ -7,11 +7,8 @@
 
 	partial class AssetLoaderInstance
 	{
-		public static string DefaultAssetName(string normBundleName)
-		{
-			int index = normBundleName.LastIndexOfAny(Delimiters) + 1;
-			return normBundleName.Substring(index);
-		}
+		public static string DefaultAssetName(string normBundleName) =>
+			normBundleName.Substring(normBundleName.LastIndexOfAny(Delimiters) + 1);
 	}
 
 	public sealed class AssetEntry

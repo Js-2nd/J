@@ -54,7 +54,7 @@
 
 	partial class AssetLoader
 	{
-		public static bool IsSimulationEnabled => Instance.IsSimulationEnabled;
+		public static bool IsSimulationEnabled => Instance && Instance.IsSimulationEnabled;
 
 		public static IObservable<Object> Load(string bundleName, string assetName = null, Type assetType = null) =>
 			Instance.Load(new AssetEntry(bundleName, assetName, assetType, LoadMethod.Single));

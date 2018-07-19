@@ -20,11 +20,11 @@ namespace J
 #if UNITY_EDITOR
 			IsAvailable = true;
 			GetAssetPaths = AssetDatabase.GetAssetPathsFromAssetBundleAndAssetName;
-			Load = ToLoadMethod(GetAssetPaths);
+			Load = ToLoadDelegate(GetAssetPaths);
 #endif
 		}
 
-		public static LoadAssetDelegate ToLoadMethod(GetAssetPathsDelegate getAssetPaths)
+		public static LoadAssetDelegate ToLoadDelegate(GetAssetPathsDelegate getAssetPaths)
 		{
 #if UNITY_EDITOR
 			if (getAssetPaths == null) throw new ArgumentNullException(nameof(getAssetPaths));

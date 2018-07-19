@@ -26,7 +26,7 @@ namespace J
 			if (map == null || method == null) return;
 			IsAvailable = true;
 			GetAssetPaths = (GetAssetPathsDelegate)Delegate.CreateDelegate(typeof(GetAssetPathsDelegate), map, method);
-			Load = AssetDatabaseLoader.ToLoadMethod(GetAssetPaths);
+			Load = AssetDatabaseLoader.ToLoadDelegate(GetAssetPaths);
 #endif
 		}
 	}
