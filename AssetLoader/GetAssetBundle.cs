@@ -13,34 +13,6 @@ namespace J
 
 	partial class AssetLoaderInstance
 	{
-		public static Hash128 VersionToHash(int version) => new Hash128(0, 0, 0, (uint)version);
-
-		public static IObservable<RequestInfo> SendAssetBundleRequest(string uri, string versionKey, string eTagKey) // TODO
-		{
-			return Observable.Interval(TimeSpan.Zero).FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
-			{
-				Func<UnityWebRequest, int, RequestInfo> save = (req, ver) =>
-				{
-					PlayerPrefs.SetInt(versionKey, ver);
-					PlayerPrefs.SetString(eTagKey, req.GetETag());
-					return new RequestInfo(req, ver);
-				};
-				int version = PlayerPrefs.GetInt(versionKey, 1);
-				if (!Caching.IsVersionCached(uri, VersionToHash(version)))
-					return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-						.SendAsObservable().Select(req => save(req, version));
-				return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(unchecked(version + 1)), 0)
-					.SendAsObservable(new UnityWebRequestSendOptions().SetETag(PlayerPrefs.GetString(eTagKey)))
-					.ContinueWith(req =>
-					{
-						if (req.responseCode == 304)
-							return UnityWebRequestAssetBundle.GetAssetBundle(uri, VersionToHash(version), 0)
-								.SendAsObservable().Select(r => new RequestInfo(r, version));
-						return Observable.Return(save(req, unchecked(version + 1)));
-					});
-			});
-		}
-
 		string NormToActualName(string normBundleName) => m_NormToActual.GetOrDefault(normBundleName, normBundleName);
 
 		IObservable<AssetBundle> GetAssetBundleCore(string actualName)
@@ -48,7 +20,10 @@ namespace J
 			ThrowIfManifestNotLoaded();
 			string url = RootUrl + actualName;
 			var hash = Manifest.GetAssetBundleHash(actualName);
-			return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0).SendAsObservable().LoadAssetBundle();
+			var request = hash.isValid
+				? UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
+				: UnityWebRequestAssetBundle.GetAssetBundle(url);
+			return request.SendAsObservable().LoadAssetBundle();
 		}
 
 		IObservable<BundleReference> GetAssetBundle(string actualName) => Observable.Defer(() =>
@@ -59,7 +34,7 @@ namespace J
 				cache = new BundleCache(actualName);
 				m_BundleCaches.Add(actualName, cache);
 				GetAssetBundleCore(actualName)
-					.DoOnError(ex => m_BundleCaches.Remove(actualName))
+					.DoOnError(_ => m_BundleCaches.Remove(actualName))
 					.Subscribe(cache);
 			}
 			return cache.GetReference();
@@ -67,11 +42,7 @@ namespace J
 
 		public IObservable<BundleReference> GetAssetBundle(BundleEntry entry)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
-			{
-				string actualName = NormToActualName(entry.NormName);
-				return GetAssetBundle(actualName);
-			});
+			return WaitForManifestLoaded().ContinueWith(_ => GetAssetBundle(NormToActualName(entry.NormName)));
 		}
 
 		public IObservable<BundleReference> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
@@ -92,7 +63,7 @@ namespace J
 						cancel.Add(reference);
 					})
 					.ToSingleEnumerable()
-					.Concat(dependencies.Select(dep => GetAssetBundle(dep).Do(reference =>
+					.Concat(dependencies.Select(depend => GetAssetBundle(depend).Do(reference =>
 					{
 						if (reference == null) return;
 						cancel.Add(reference);
@@ -110,30 +81,39 @@ namespace J
 					.DoOnCancel(() => cancel.Dispose());
 			});
 		}
-	}
 
-	public class RequestInfo // TODO
-	{
-		public UnityWebRequest Request { get; }
-		public int Version { get; }
-
-		public RequestInfo(UnityWebRequest request, int version)
+		public void UnloadUnusedBundles(bool unloadAllLoadedAssets = false) // TODO async?
 		{
-			Request = request;
-			Version = version;
+			if (m_BundleCaches.Count <= 0) return;
+			var oldCaches = m_BundleCaches;
+			m_BundleCaches = new Dictionary<string, BundleCache>();
+			foreach (var item in oldCaches)
+			{
+				var cache = item.Value;
+				if (cache.RefCount > 0)
+				{
+					m_BundleCaches.Add(item.Key, cache);
+					continue;
+				}
+				cache.GetReference().CatchIgnore().Subscribe(reference =>
+				{
+					try { reference.Bundle.Unload(unloadAllLoadedAssets); }
+					finally { reference.Dispose(); }
+				});
+			}
+			oldCaches.Clear();
 		}
 	}
 
 	partial class AssetLoader
 	{
-		//public static IObservable<RequestInfo>
-		//	SendAssetBundleRequest(string uri, string versionKey, string eTagKey) =>
-		//	AssetLoaderInstance.SendAssetBundleRequest(uri, versionKey, eTagKey);
-
 		public static IObservable<BundleReference> GetAssetBundle(string bundleName) =>
 			Instance.GetAssetBundle(new BundleEntry(bundleName));
 
 		public static IObservable<BundleReference> GetAssetBundleWithDependencies(string bundleName) =>
 			Instance.GetAssetBundleWithDependencies(new BundleEntry(bundleName));
+
+		public static void UnloadUnusedBundles(bool unloadAllLoadedAssets = false) =>
+			Instance.UnloadUnusedBundles(unloadAllLoadedAssets);
 	}
 }

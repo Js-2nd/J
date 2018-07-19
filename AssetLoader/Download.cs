@@ -29,7 +29,7 @@
 		}
 	}
 
-	public static partial class AssetLoader
+	partial class AssetLoader
 	{
 		public static IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
 			bool includeDependencies = true, BatchDownloader downloader = null) =>

@@ -52,28 +52,6 @@
 		{
 			UnloadUnusedBundles();
 		}
-
-		public void UnloadUnusedBundles(bool unloadAllLoadedAssets = false) // TODO async?
-		{
-			if (m_BundleCaches.Count <= 0) return;
-			var oldCaches = m_BundleCaches;
-			m_BundleCaches = new Dictionary<string, BundleCache>();
-			foreach (var item in oldCaches)
-			{
-				var cache = item.Value;
-				if (cache.RefCount > 0)
-				{
-					m_BundleCaches.Add(item.Key, cache);
-					continue;
-				}
-				cache.GetReference().CatchIgnore().Subscribe(reference =>
-				{
-					try { reference.Bundle.Unload(unloadAllLoadedAssets); }
-					finally { reference.Dispose(); }
-				});
-			}
-			oldCaches.Clear();
-		}
 	}
 
 	public static partial class AssetLoader
@@ -85,14 +63,5 @@
 			get { return Instance.LoadManifestOnDemand; }
 			set { Instance.LoadManifestOnDemand = value; }
 		}
-
-		public static string PresetManifestUrl
-		{
-			get { return Instance.PresetManifestUrl; }
-			set { Instance.PresetManifestUrl = value; }
-		}
-
-		public static void UnloadUnusedBundles(bool unloadAllLoadedAssets = false) =>
-			Instance.UnloadUnusedBundles(unloadAllLoadedAssets);
 	}
 }
