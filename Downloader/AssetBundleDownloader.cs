@@ -4,39 +4,51 @@ using UnityWebRequestAssetBundle = UnityEngine.Networking.UnityWebRequest;
 
 namespace J
 {
+	using J.Internal;
 	using System;
+	using UniRx;
 	using UnityEngine;
 	using UnityEngine.Networking;
 
-	public interface IAssetBundleDownloader : IDownloader
-	{
-		Hash128 Hash { get; }
-	}
-
-	public class AssetBundleDownloader : AssetBundleDownloader<AssetBundleDownloader>
-	{
-		public static AssetBundleDownloader Create(string url) => new AssetBundleDownloader().SetUrl(url);
-		public static AssetBundleDownloader Create(string url, Hash128 hash) => Create(url).SetHash(hash);
-	}
-
-	public class AssetBundleDownloader<T> : UnityWebRequestSendOptions<T>,
-		IAssetBundleDownloader where T : AssetBundleDownloader<T>
+	public sealed class AssetBundleDownloader : Downloader
 	{
 		public string Url { get; set; }
 		public Hash128 Hash { get; set; }
+		public string ETag { get; set; }
+		public string LastModified { get; set; }
 
-		public T SetUrl(string url)
+		public override IObservable<UnityWebRequest> FetchHead(IProgress<float> progress = null)
 		{
-			Url = url;
-			return (T)this;
-		}
-		public T SetHash(Hash128 hash)
-		{
-			Hash = hash;
-			return (T)this;
+			return Observable.Defer(() =>
+			{
+				if (IsHeadFetched) return ReturnNull.ReportOnCompleted(progress);
+				return (Hash.isValid ? AssetLoader.WhenCacheReady() : Observable.ReturnUnit()).ContinueWith(_ =>
+				{
+					if (Hash.isValid && Caching.IsVersionCached(Url, Hash))
+					{
+						IsHeadFetched = true;
+						IsDownloaded = true;
+						return ReturnNull.ReportOnCompleted(progress);
+					}
+					return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(req =>
+					{
+						IsHeadFetched = true;
+						if (req.responseCode == 304) IsDownloaded = true;
+						Size = req.GetContentLengthNum();
+					});
+				});
+			});
 		}
 
-		public IObservable<UnityWebRequest> Download(IProgress<float> progress = null) =>
-			UnityWebRequestAssetBundle.GetAssetBundle(Url, Hash, 0).SendAsObservable(this, progress);
+		public override IObservable<UnityWebRequest> Download(IProgress<float> progress = null)
+		{
+			return Observable.Defer(() =>
+			{
+				var request = Hash.isValid
+					? UnityWebRequestAssetBundle.GetAssetBundle(Url, Hash, 0)
+					: UnityWebRequestAssetBundle.GetAssetBundle(Url);
+				return request.SendAsObservable(progress).Do(_ => IsDownloaded = true);
+			});
+		}
 	}
 }
