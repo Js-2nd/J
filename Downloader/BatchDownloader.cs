@@ -72,19 +72,19 @@
 			return queue;
 		}
 
-		public void Add(IDownloader downloader) => list.Add(Item.FromDownloader(downloader));
+		public void Add(Downloader downloader) => list.Add(Item.FromDownloader(downloader));
 
-		public void AddRange(IEnumerable<IDownloader> downloaders) =>
+		public void AddRange(IEnumerable<Downloader> downloaders) =>
 			list.AddRange(downloaders.Select(Item.FromDownloader));
 
 		public class Item
 		{
-			public IDownloader Downloader;
+			public Downloader Downloader;
 			public bool IsHeadFetched;
 			public bool IsDownloaded;
 			public long? Size;
 
-			public static Item FromDownloader(IDownloader downloader) => new Item { Downloader = downloader };
+			public static Item FromDownloader(Downloader downloader) => new Item { Downloader = downloader };
 		}
 	}
 }
