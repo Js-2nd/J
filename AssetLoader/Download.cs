@@ -11,7 +11,7 @@
 		public IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
 			bool includeDependencies = true, BatchDownloader downloader = null)
 		{
-			return WaitForManifestLoaded().Select(_ =>
+			return WhenManifestLoaded().Select(_ =>
 			{
 				var actualNames = bundleNames.Select(NormBundleName).Where(ManifestContains).Select(NormToActualName);
 				if (includeDependencies)

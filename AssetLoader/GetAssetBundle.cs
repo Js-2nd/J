@@ -42,12 +42,12 @@ namespace J
 
 		public IObservable<BundleReference> GetAssetBundle(BundleEntry entry)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ => GetAssetBundle(NormToActualName(entry.NormName)));
+			return WhenManifestLoaded().ContinueWith(_ => GetAssetBundle(NormToActualName(entry.NormName)));
 		}
 
 		public IObservable<BundleReference> GetAssetBundleWithDependencies(BundleEntry entry, int maxConcurrent = 8)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
+			return WhenManifestLoaded().ContinueWith(_ =>
 			{
 				if (!ManifestContains(entry)) // TODO throw directly https://github.com/neuecc/UniRx/issues/311
 					return Observable.Throw<BundleReference>(new AssetNotFoundException(entry));

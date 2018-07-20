@@ -63,5 +63,23 @@
 			get { return Instance.LoadManifestOnDemand; }
 			set { Instance.LoadManifestOnDemand = value; }
 		}
+
+		public static IObservable<T> WhenCacheReady<T>(Func<IObservable<T>> factory)
+		{
+			return WhenCacheReady().ContinueWith(_ =>
+			{
+				try { return factory(); }
+				catch (Exception ex) { return Observable.Throw<T>(ex); }
+			});
+		}
+		public static IObservable<Unit> WhenCacheReady()
+		{
+			if (Caching.ready) return Observable.ReturnUnit();
+			return Observable.Defer(() =>
+			{
+				if (Caching.ready) return Observable.ReturnUnit();
+				return Observable.EveryUpdate().AsUnitObservable().FirstOrEmpty(_ => Caching.ready);
+			});
+		}
 	}
 }

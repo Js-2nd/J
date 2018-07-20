@@ -27,29 +27,26 @@ namespace J
 			return new ReqVerPair(request, version);
 		}
 
-		static IObservable<ReqVerPair> SendManifestRequest(string url)
+		static IObservable<ReqVerPair> SendManifestRequest(string url) => AssetLoader.WhenCacheReady(() =>
 		{
-			return Observable.EveryUpdate().FirstOrEmpty(_ => Caching.ready).ContinueWith(_ =>
-			{
-				int version = PlayerPrefs.GetInt(ManifestVersionKey, 1);
-				var hash = VersionToHash(version);
-				if (!Caching.IsVersionCached(url, hash))
+			int version = PlayerPrefs.GetInt(ManifestVersionKey, 1);
+			var hash = VersionToHash(version);
+			if (!Caching.IsVersionCached(url, hash))
+				return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
+					.SendAsObservable().Select(req => CreateReqVerPair(req, version, true));
+			return UnityWebRequest.Head(url).SendAsObservable()
+				.Catch((Exception __) => Observable.Return<UnityWebRequest>(null))
+				.ContinueWith(head =>
+				{
+					if (head != null && head.GetETag() == PlayerPrefs.GetString(ManifestETagKey))
+						return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
+							.SendAsObservable().Select(req => CreateReqVerPair(req, version));
+					version = unchecked(version + 1);
+					hash = VersionToHash(version);
 					return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
 						.SendAsObservable().Select(req => CreateReqVerPair(req, version, true));
-				return UnityWebRequest.Head(url).SendAsObservable()
-					.Catch((Exception __) => Observable.Return<UnityWebRequest>(null))
-					.ContinueWith(head =>
-					{
-						if (head != null && head.GetETag() == PlayerPrefs.GetString(ManifestETagKey))
-							return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
-								.SendAsObservable().Select(req => CreateReqVerPair(req, version));
-						version = unchecked(version + 1);
-						hash = VersionToHash(version);
-						return UnityWebRequestAssetBundle.GetAssetBundle(url, hash, 0)
-							.SendAsObservable().Select(req => CreateReqVerPair(req, version, true));
-					});
-			});
-		}
+				});
+		});
 
 		public string PresetManifestUrl
 		{
@@ -150,7 +147,7 @@ namespace J
 			return actualName;
 		}
 
-		public IObservable<Unit> WaitForManifestLoaded(bool? load = null) => Observable.Defer(() =>
+		public IObservable<Unit> WhenManifestLoaded(bool? load = null) => Observable.Defer(() =>
 		{
 			if (ManifestStatus == ManifestStatus.Loaded) return Observable.ReturnUnit();
 			if (ManifestStatus == ManifestStatus.NotLoaded && (load ?? LoadManifestOnDemand))
@@ -207,8 +204,8 @@ namespace J
 		public static IObservable<Unit> LoadManifest(string url = null, bool? setRootUrl = null) =>
 			Instance.LoadManifest(url, setRootUrl);
 
-		public static IObservable<Unit> WaitForManifestLoaded(bool? load = null) =>
-			Instance.WaitForManifestLoaded(load);
+		public static IObservable<Unit> WhenManifestLoaded(bool? load = null) =>
+			Instance.WhenManifestLoaded(load);
 
 		public static bool ManifestContains(string bundleName) =>
 			ManifestStatus == ManifestStatus.Loaded && Instance.ManifestContains(new BundleEntry(bundleName));
