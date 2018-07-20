@@ -143,7 +143,7 @@
 			public static IObservable<T> ReportOnCompleted<T>(this IObservable<T> observable, IProgress<float> progress)
 			{
 				if (progress == null) return observable;
-				return observable.DoOnCompleted(() => progress.Report(1f));
+				return observable.DoOnCompleted(() => progress.Report(1));
 			}
 		}
 	}
