@@ -133,18 +133,15 @@ namespace J
 			UnloadUnusedBundles();
 			Manifest = manifest;
 			ManifestVersion = version;
+			m_ActualNames.Clear();
 			m_NormToActual.Clear();
-			var all = Manifest.GetAllAssetBundles();
-			foreach (string actualName in all)
-				m_NormToActual.Add(ActualToNormName(actualName), actualName);
-		}
-
-		string ActualToNormName(string actualName)
-		{
-			string hash = Manifest.GetAssetBundleHash(actualName).ToString();
-			if (actualName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
-				return actualName.Substring(0, actualName.Length - hash.Length - 1);
-			return actualName;
+			foreach (string actualName in Manifest.GetAllAssetBundles())
+			{
+				m_ActualNames.Add(actualName);
+				string hash = Manifest.GetAssetBundleHash(actualName).ToString();
+				if (actualName.EndsWith(hash, StringComparison.OrdinalIgnoreCase))
+					m_NormToActual.Add(actualName.Substring(0, actualName.Length - hash.Length - 1), actualName);
+			}
 		}
 
 		public IObservable<Unit> WhenManifestLoaded(bool? load = null) => Observable.Defer(() =>
@@ -164,7 +161,7 @@ namespace J
 		bool ManifestContains(string normBundleName)
 		{
 			ThrowIfManifestNotLoaded();
-			return m_NormToActual.ContainsKey(normBundleName);
+			return m_NormToActual.ContainsKey(normBundleName) || m_ActualNames.Contains(normBundleName);
 		}
 
 		void ThrowIfManifestNotLoaded()
