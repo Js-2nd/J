@@ -26,16 +26,11 @@ namespace J
 				{
 					if (Hash.isValid && Caching.IsVersionCached(Url, Hash))
 					{
-						IsHeadFetched = true;
-						IsDownloaded = true;
+						try { OnDownloaded(null); } // TODO remove try-catch block https://github.com/neuecc/UniRx/issues/311
+						catch (Exception ex) { return Observable.Throw<UnityWebRequest>(ex); }
 						return ReturnNull.ReportOnCompleted(progress);
 					}
-					return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(req =>
-					{
-						IsHeadFetched = true;
-						if (req.responseCode == 304) IsDownloaded = true;
-						Size = req.GetContentLengthNum();
-					});
+					return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(OnHeadFetched);
 				});
 			});
 		}
@@ -47,7 +42,7 @@ namespace J
 				var request = Hash.isValid
 					? UnityWebRequestAssetBundle.GetAssetBundle(Url, Hash, 0)
 					: UnityWebRequestAssetBundle.GetAssetBundle(Url);
-				return request.SendAsObservable(progress).Do(_ => IsDownloaded = true);
+				return request.SendAsObservable(progress).Do(OnDownloaded);
 			});
 		}
 	}

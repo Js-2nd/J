@@ -23,12 +23,7 @@
 			return Observable.Defer(() =>
 			{
 				if (IsHeadFetched) return ReturnNull.ReportOnCompleted(progress);
-				return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(req =>
-				{
-					IsHeadFetched = true;
-					if (req.responseCode == 304) IsDownloaded = true;
-					Size = req.GetContentLengthNum();
-				});
+				return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(OnHeadFetched);
 			});
 		}
 
@@ -49,7 +44,7 @@
 				File.Delete(SavePath);
 				File.Move(tempPath, SavePath);
 				AfterSave?.Invoke(new CallbackParam(this, req));
-				IsDownloaded = true;
+				OnDownloaded(req);
 			});
 		});
 
