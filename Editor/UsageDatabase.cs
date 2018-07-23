@@ -191,19 +191,17 @@
 			return false;
 		}
 
-		static IEnumerable<T> BreadthFirstSearch<T>(IEnumerable<T> source,
-			Func<T, IEnumerable<T>> extender, bool excludeSource = false)
+		static IEnumerable<T> BreadthFirstSearch<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> expander)
 		{
-			var origin = new HashSet<T>(source);
-			var result = excludeSource ? new HashSet<T>(origin) : new HashSet<T>();
-			var queue = new Queue<T>(origin);
-			while (queue.Count > 0)
-				foreach (var item in extender(queue.Dequeue()))
-					if (result.Add(item))
-					{
-						if (!origin.Contains(item)) queue.Enqueue(item);
-						yield return item;
-					}
+			var visit = new HashSet<T>(source);
+			var queue = new Queue<T>(visit);
+			for (int skip = queue.Count; queue.Count > 0;)
+			{
+				var current = queue.Dequeue();
+				if (--skip < 0) yield return current;
+				foreach (var next in expander(current))
+					if (visit.Add(next)) queue.Enqueue(next);
+			}
 		}
 
 		[Serializable]
