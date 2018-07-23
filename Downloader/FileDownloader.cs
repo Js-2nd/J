@@ -1,83 +1,63 @@
 ﻿namespace J
 {
+	using J.Internal;
 	using System;
 	using System.IO;
 	using UniRx;
 	using UnityEngine.Networking;
 
-	public interface IFileDownloader : IDownloader
-	{
-		string SavePath { get; }
-		string TempPath { get; }
-		Action<IFileDownloader> BeforeSave { get; }
-		Action<IFileDownloader> AfterSave { get; }
-	}
-
-	public class FileDownloader : FileDownloader<FileDownloader>
-	{
-		public static FileDownloader Create(string url, string savePath) =>
-			new FileDownloader().SetUrl(url).SetSavePath(savePath);
-	}
-
-	public class FileDownloader<T> : UnityWebRequestSendOptions<T>,
-		IFileDownloader where T : FileDownloader<T>
+	public sealed class FileDownloader : Downloader
 	{
 		public string Url { get; set; }
+		public string ETag { get; set; }
+		public string LastModified { get; set; }
+
 		public string SavePath { get; set; }
 		public string TempPath { get; set; }
-		public Action<IFileDownloader> BeforeSave { get; set; }
-		public Action<IFileDownloader> AfterSave { get; set; }
 
-		public T SetUrl(string url)
+		public Action<CallbackParam> BeforeSave { get; set; }
+		public Action<CallbackParam> AfterSave { get; set; }
+
+		public override IObservable<UnityWebRequest> FetchHead(IProgress<float> progress = null)
 		{
-			Url = url;
-			return (T)this;
-		}
-		public T SetSavePath(string savePath)
-		{
-			SavePath = savePath;
-			return (T)this;
-		}
-		public T SetTempPath(string tempPath)
-		{
-			TempPath = tempPath;
-			return (T)this;
-		}
-		public T SetBeforeSave(Action<IFileDownloader> beforeSave)
-		{
-			BeforeSave = beforeSave;
-			return (T)this;
-		}
-		public T SetAfterSave(Action<IFileDownloader> afterSave)
-		{
-			AfterSave = afterSave;
-			return (T)this;
+			return Observable.Defer(() =>
+			{
+				if (IsHeadFetched) return ReturnNull.ReportOnCompleted(progress);
+				return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(OnHeadFetched);
+			});
 		}
 
-		public IObservable<UnityWebRequest> Download(IProgress<float> progress = null)
+		public override IObservable<UnityWebRequest> Download(IProgress<float> progress = null) =>
+			Observable.Defer(() => IsHeadFetched ? ReturnNull : FetchHead()).ContinueWith(_ =>
+				IsDownloaded ? ReturnNull.ReportOnCompleted(progress) : DoDownload(progress));
+
+		IObservable<UnityWebRequest> DoDownload(IProgress<float> progress) => Observable.Defer(() =>
 		{
 			string tempPath = TempPath ?? SavePath + ".tmp";
 			var request = new UnityWebRequest(Url);
 			var handler = new DownloadHandlerFile(tempPath);
 			request.downloadHandler = handler;
-			return request.SendAsObservable(this, progress)
-				.Do(req =>
-				{
-					handler.Dispose();
-					if (req.responseCode == 200)
-					{
-						BeforeSave?.Invoke(this);
-						File.Delete(SavePath);
-						File.Move(tempPath, SavePath);
-						ETag = req.GetETag();
-						LastModified = req.GetLastModified();
-						AfterSave?.Invoke(this);
-					}
-					else
-					{
-						File.Delete(tempPath);
-					}
-				});
+			return request.SendAsObservable(progress).Do(req =>
+			{
+				req.downloadHandler.Dispose();
+				BeforeSave?.Invoke(new CallbackParam(this, req));
+				File.Delete(SavePath);
+				File.Move(tempPath, SavePath);
+				AfterSave?.Invoke(new CallbackParam(this, req));
+				OnDownloaded(req);
+			});
+		});
+
+		public struct CallbackParam
+		{
+			public readonly FileDownloader Downloader;
+			public readonly UnityWebRequest Request;
+
+			public CallbackParam(FileDownloader downloader, UnityWebRequest request)
+			{
+				Downloader = downloader;
+				Request = request;
+			}
 		}
 	}
 }

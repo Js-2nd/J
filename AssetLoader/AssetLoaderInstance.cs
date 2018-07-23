@@ -21,6 +21,7 @@
 		public string IosManifestUrl;
 
 		ReactiveProperty<ManifestStatus> m_ManifestStatus;
+		HashSet<string> m_ActualNames;
 		Dictionary<string, string> m_NormToActual;
 		Dictionary<string, BundleCache> m_BundleCaches;
 
@@ -28,6 +29,7 @@
 		{
 			base.SingletonAwake();
 			m_ManifestStatus = new ReactiveProperty<ManifestStatus>(ManifestStatus.NotLoaded);
+			m_ActualNames = new HashSet<string>();
 			m_NormToActual = new Dictionary<string, string>();
 			m_BundleCaches = new Dictionary<string, BundleCache>();
 			UpdateLoadMethod();
@@ -62,6 +64,24 @@
 		{
 			get { return Instance.LoadManifestOnDemand; }
 			set { Instance.LoadManifestOnDemand = value; }
+		}
+
+		public static IObservable<T> WhenCacheReady<T>(Func<IObservable<T>> factory)
+		{
+			return WhenCacheReady().ContinueWith(_ =>
+			{
+				try { return factory(); }
+				catch (Exception ex) { return Observable.Throw<T>(ex); }
+			});
+		}
+		public static IObservable<Unit> WhenCacheReady()
+		{
+			if (Caching.ready) return Observable.ReturnUnit();
+			return Observable.Defer(() =>
+			{
+				if (Caching.ready) return Observable.ReturnUnit();
+				return Observable.EveryUpdate().AsUnitObservable().FirstOrEmpty(_ => Caching.ready);
+			});
 		}
 	}
 }

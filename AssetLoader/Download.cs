@@ -11,7 +11,7 @@
 		public IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
 			bool includeDependencies = true, BatchDownloader downloader = null)
 		{
-			return WaitForManifestLoaded().Select(_ =>
+			return WhenManifestLoaded().Select(_ =>
 			{
 				var actualNames = bundleNames.Select(NormBundleName).Where(ManifestContains).Select(NormToActualName);
 				if (includeDependencies)
@@ -22,7 +22,7 @@
 				{
 					var hash = Manifest.GetAssetBundleHash(actualName);
 					if (!Caching.IsVersionCached(actualName, hash))
-						downloader.Add(AssetBundleDownloader.Create(RootUrl + actualName, hash));
+						downloader.Add(new AssetBundleDownloader { Url = RootUrl + actualName, Hash = hash });
 				}
 				return downloader;
 			});

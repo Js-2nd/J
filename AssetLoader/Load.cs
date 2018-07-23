@@ -8,7 +8,7 @@
 	{
 		IObservable<Object> LoadCore(AssetEntry entry)
 		{
-			return WaitForManifestLoaded().ContinueWith(_ =>
+			return WhenManifestLoaded().ContinueWith(_ =>
 				GetAssetBundleWithDependencies(entry.BundleEntry).ContinueWith(reference =>
 					entry.LoadFrom(reference.Bundle).Finally(reference.Dispose)));
 		}
