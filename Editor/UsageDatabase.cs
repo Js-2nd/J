@@ -12,8 +12,8 @@
 	public partial class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
 	{
 		[SerializeField, HideInInspector] List<Item> Data = new List<Item>();
-		Dictionary<string, HashSet<string>> ReferDict = new Dictionary<string, HashSet<string>>();
-		Dictionary<string, HashSet<string>> DependDict = new Dictionary<string, HashSet<string>>();
+		readonly Dictionary<string, HashSet<string>> ReferDict = new Dictionary<string, HashSet<string>>();
+		readonly Dictionary<string, HashSet<string>> DependDict = new Dictionary<string, HashSet<string>>();
 
 		void ISerializationCallbackReceiver.OnBeforeSerialize()
 		{
@@ -61,12 +61,14 @@
 		}
 
 		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
-		public IEnumerable<string> GetReferIds(IEnumerable<string> ids, bool recursive = false) =>
-			recursive ? BreadthFirstSearch(ids, GetReferIds) : ids.SelectMany(GetReferIds).Distinct();
+		public IEnumerable<string> GetReferIds(IEnumerable<string> ids, int maxDepth = -1,
+			SearchYieldType yieldType = SearchYieldType.ExcludeSourceAtFirst) =>
+			Search.BreadthFirst(ids, GetReferIds, maxDepth, yieldType);
 
 		public IReadOnlyCollection<string> GetDependIds(string id) => DependDict.GetOrDefault(id) ?? Empty;
-		public IEnumerable<string> GetDependIds(IEnumerable<string> ids, bool recursive = false) =>
-			recursive ? BreadthFirstSearch(ids, GetDependIds) : ids.SelectMany(GetDependIds).Distinct();
+		public IEnumerable<string> GetDependIds(IEnumerable<string> ids, int maxDepth = -1,
+			SearchYieldType yieldType = SearchYieldType.ExcludeSourceAtFirst) =>
+			Search.BreadthFirst(ids, GetDependIds, maxDepth, yieldType);
 	}
 
 	partial class UsageDatabase
@@ -104,23 +106,23 @@
 		[MenuItem(MenuRoot + "Find References")]
 		static void FindRefer()
 		{
-			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs), "reference", "references");
+			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs, 1), "reference", "references");
 		}
 		[MenuItem(MenuRoot + "Find References (Recursive)")]
 		static void FindReferRecursive()
 		{
-			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs, true), "reference", "references");
+			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs), "reference", "references");
 		}
 
 		[MenuItem(MenuRoot + "Find Dependencies")]
 		static void FindDepend()
 		{
-			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs), "dependency", "dependencies");
+			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs, 1), "dependency", "dependencies");
 		}
 		[MenuItem(MenuRoot + "Find Dependencies (Recursive)")]
 		static void FindDependRecursive()
 		{
-			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs, true), "dependency", "dependencies");
+			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs), "dependency", "dependencies");
 		}
 
 		static void LogAssets(IEnumerable<string> ids, string singular = null, string plural = null)
@@ -189,19 +191,6 @@
 				}
 			}
 			return false;
-		}
-
-		static IEnumerable<T> BreadthFirstSearch<T>(IEnumerable<T> source, Func<T, IEnumerable<T>> expander)
-		{
-			var visit = new HashSet<T>(source);
-			var queue = new Queue<T>(visit);
-			for (int skip = queue.Count; queue.Count > 0;)
-			{
-				var current = queue.Dequeue();
-				if (--skip < 0) yield return current;
-				foreach (var next in expander(current))
-					if (visit.Add(next)) queue.Enqueue(next);
-			}
 		}
 
 		[Serializable]
