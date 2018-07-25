@@ -15,7 +15,7 @@
 	{
 		public bool LogUpdate;
 		public bool LogChangedFiles;
-		public double SaveDelay = 3;
+		public double SaveDelay = 2;
 
 		[SerializeField, HideInInspector] List<Item> Data = new List<Item>();
 		readonly Dict ReferDict = new Dict();
@@ -178,18 +178,19 @@
 				Instance.LogChangedFiles = db.LogChangedFiles;
 				Instance.SaveDelay = db.SaveDelay;
 			}
+			db = Instance;
 			var paths = AssetDatabase.GetAllAssetPaths();
 			for (int i = 0, iCount = paths.Length; i < iCount; i++)
 			{
 				if (ShowProgress("Creating " + ClassName, i, iCount, true))
 				{
-					DestroyImmediate(Instance);
+					DestroyImmediate(db);
 					return;
 				}
-				Instance.AddRefer(paths[i]);
+				db.AddRefer(paths[i]);
 			}
-			AssetDatabase.CreateAsset(Instance, DataPath);
-			Debug.Log($"{ClassName} created. {Instance.CountInfo}");
+			AssetDatabase.CreateAsset(db, DataPath);
+			Debug.Log($"{ClassName} created. {db.CountInfo}", db);
 		}
 
 		public static bool ShowProgress(string title, int index, int count, bool cancelable = false)
@@ -265,7 +266,7 @@
 			{
 				var db = Init();
 				if (db == null) return;
-				if (db.LogUpdate) Debug.Log($"{ClassName} updated. changed={Changed.Count} {db.CountInfo}");
+				if (db.LogUpdate) Debug.Log($"{ClassName} updated. changed={Changed.Count} {db.CountInfo}", db);
 				if (db.LogChangedFiles) foreach (string path in Changed) Debug.Log(path);
 				Changed.Clear();
 				EditorUtility.SetDirty(db);
