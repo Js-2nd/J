@@ -29,7 +29,7 @@
 			DependDict.Clear();
 			foreach (var item in Data)
 				foreach (string dependId in item.DependIds)
-					AddPair(item.Id, dependId, false);
+					AddPair(item.Id, dependId);
 		}
 
 		void AddRefer(string path, string id = null)
@@ -43,11 +43,10 @@
 			}
 		}
 
-		void AddPair(string referId, string dependId, bool setDirty = true)
+		void AddPair(string referId, string dependId)
 		{
 			ReferDict.GetOrAdd(dependId, _ => new HashSet<string>()).Add(referId);
 			DependDict.GetOrAdd(referId, _ => new HashSet<string>()).Add(dependId);
-			if (setDirty) EditorUtility.SetDirty(this);
 		}
 
 		void RemoveRefer(string id)
@@ -57,7 +56,6 @@
 			foreach (string dependId in dependIds)
 				ReferDict.GetOrDefault(dependId)?.Remove(id);
 			dependIds.Clear();
-			EditorUtility.SetDirty(this);
 		}
 
 		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
@@ -157,7 +155,7 @@
 			var paths = AssetDatabase.GetAllAssetPaths();
 			for (int i = 0, iCount = paths.Length; i < iCount; i++)
 			{
-				if (ShowProgress("Creating " + ClassName, i + 1, iCount, true))
+				if (ShowProgress("Creating " + ClassName, i, iCount, true))
 				{
 					DestroyImmediate(Instance);
 					return;
@@ -168,18 +166,20 @@
 			Debug.Log(ClassName + " created.", Instance);
 		}
 
-		static bool ShowProgress(string title, int nth, int count, bool cancelable = false)
+		public static bool ShowProgress(string title, int index, int count, bool cancelable = false)
 		{
-			if (nth == count)
+			if (index + 1 >= count)
 			{
 				EditorUtility.ClearProgressBar();
 				return false;
 			}
-			if ((nth & 63) == 1)
+			if ((index & 63) == 0)
 			{
+				string info = $"{index}/{count}";
+				float progress = (float)index / count;
 				if (cancelable)
 				{
-					if (EditorUtility.DisplayCancelableProgressBar(title, $"{nth}/{count}", (float)nth / count))
+					if (EditorUtility.DisplayCancelableProgressBar(title, info, progress))
 					{
 						EditorUtility.ClearProgressBar();
 						return true;
@@ -187,7 +187,7 @@
 				}
 				else
 				{
-					EditorUtility.DisplayProgressBar(title, $"{nth}/{count}", (float)nth / count);
+					EditorUtility.DisplayProgressBar(title, info, progress);
 				}
 			}
 			return false;
@@ -211,6 +211,7 @@
 		{
 			static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
 			{
+				if (imported.Length == 0 && deleted.Length == 0) return;
 				if (!Init()) return;
 				foreach (string path in deleted)
 					Instance.RemoveRefer(AssetDatabase.AssetPathToGUID(path));
@@ -220,6 +221,7 @@
 					Instance.RemoveRefer(id);
 					Instance.AddRefer(path, id);
 				}
+				EditorUtility.SetDirty(Instance);
 			}
 		}
 	}
