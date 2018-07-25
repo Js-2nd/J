@@ -5,15 +5,21 @@
 	using System.Collections.Generic;
 	using System.IO;
 	using System.Linq;
+	using UniRx;
 	using UnityEditor;
 	using UnityEngine;
+	using Dict = System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>;
 
 	[PreferBinarySerialization]
 	public partial class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
 	{
+		public bool LogUpdate;
+		public bool LogChangedFiles;
+		public double SaveDelay = 3;
+
 		[SerializeField, HideInInspector] List<Item> Data = new List<Item>();
-		readonly Dictionary<string, HashSet<string>> ReferDict = new Dictionary<string, HashSet<string>>();
-		readonly Dictionary<string, HashSet<string>> DependDict = new Dictionary<string, HashSet<string>>();
+		readonly Dict ReferDict = new Dict();
+		readonly Dict DependDict = new Dict();
 
 		void ISerializationCallbackReceiver.OnBeforeSerialize()
 		{
@@ -53,9 +59,14 @@
 		{
 			var dependIds = DependDict.GetOrDefault(id);
 			if (dependIds == null) return;
+			DependDict.Remove(id);
 			foreach (string dependId in dependIds)
-				ReferDict.GetOrDefault(dependId)?.Remove(id);
-			dependIds.Clear();
+			{
+				var referIds = ReferDict.GetOrDefault(dependId);
+				if (referIds == null) continue;
+				referIds.Remove(id);
+				if (referIds.Count == 0) ReferDict.Remove(dependId);
+			}
 		}
 
 		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
@@ -67,6 +78,8 @@
 		public IEnumerable<string> GetDependIds(IEnumerable<string> ids, int maxDepth = -1,
 			SearchYieldType yieldType = SearchYieldType.ExcludeSourceAtFirst) =>
 			Search.BreadthFirst(ids, GetDependIds, maxDepth, yieldType);
+
+		string CountInfo => $"dep={DependDict.Count} ref={ReferDict.Count}";
 	}
 
 	partial class UsageDatabase
@@ -126,32 +139,45 @@
 		static void LogAssets(IEnumerable<string> ids, string singular = null, string plural = null)
 		{
 			int count = 0;
+			int deleted = 0;
 			foreach (string id in ids)
-			{
-				count++;
-				LogAsset(id);
-			}
+				if (LogAsset(id)) count++;
+				else deleted++;
 			if (singular == null) return;
 			if (plural == null) plural = singular;
+			string suffix = deleted == 0 ? "." : $", {deleted} deleted.";
 			switch (count)
 			{
-				case 0: Debug.Log($"No {plural} found."); break;
-				case 1: Debug.Log($"1 {singular} found."); break;
-				default: Debug.Log($"{count} {plural} found."); break;
+				case 0: Debug.Log($"No {plural} found{suffix}"); break;
+				case 1: Debug.Log($"1 {singular} found{suffix}"); break;
+				default: Debug.Log($"{count} {plural} found{suffix}"); break;
 			}
 		}
 
-		static void LogAsset(string id)
+		static bool LogAsset(string id)
 		{
 			string path = AssetDatabase.GUIDToAssetPath(id);
 			var asset = AssetDatabase.LoadMainAssetAtPath(path);
+			if (asset == null)
+			{
+				Debug.LogWarning("[DELETED] " + path);
+				return false;
+			}
 			Debug.Log($"[{asset.GetType().Name}] {path}", asset);
+			return true;
 		}
 
 		[MenuItem(MenuRoot + "Refresh")]
 		static void Create()
 		{
+			var db = Init();
 			Instance = CreateInstance<UsageDatabase>();
+			if (db)
+			{
+				Instance.LogUpdate = db.LogUpdate;
+				Instance.LogChangedFiles = db.LogChangedFiles;
+				Instance.SaveDelay = db.SaveDelay;
+			}
 			var paths = AssetDatabase.GetAllAssetPaths();
 			for (int i = 0, iCount = paths.Length; i < iCount; i++)
 			{
@@ -163,7 +189,7 @@
 				Instance.AddRefer(paths[i]);
 			}
 			AssetDatabase.CreateAsset(Instance, DataPath);
-			Debug.Log(ClassName + " created.", Instance);
+			Debug.Log($"{ClassName} created. {Instance.CountInfo}");
 		}
 
 		public static bool ShowProgress(string title, int index, int count, bool cancelable = false)
@@ -209,19 +235,40 @@
 
 		class Postprocessor : AssetPostprocessor
 		{
+			static readonly HashSet<string> Changed = new HashSet<string>();
+			static readonly SerialDisposable Saving = new SerialDisposable();
+
 			static void OnPostprocessAllAssets(string[] imported, string[] deleted, string[] moved, string[] movedFrom)
 			{
 				if (imported.Length == 0 && deleted.Length == 0) return;
-				if (!Init()) return;
+				var db = Init();
+				if (db == null) return;
 				foreach (string path in deleted)
-					Instance.RemoveRefer(AssetDatabase.AssetPathToGUID(path));
+				{
+					if (path == DataPath) continue;
+					Changed.Add(path);
+					db.RemoveRefer(AssetDatabase.AssetPathToGUID(path));
+				}
 				foreach (string path in imported)
 				{
+					if (path == DataPath) continue;
+					Changed.Add(path);
 					string id = AssetDatabase.AssetPathToGUID(path);
-					Instance.RemoveRefer(id);
-					Instance.AddRefer(path, id);
+					db.RemoveRefer(id);
+					db.AddRefer(path, id);
 				}
-				EditorUtility.SetDirty(Instance);
+				if (Changed.Count <= 0) return;
+				Saving.Disposable = Observable.Timer(TimeSpan.FromSeconds(db.SaveDelay)).Subscribe(_ => Save());
+			}
+
+			static void Save()
+			{
+				var db = Init();
+				if (db == null) return;
+				if (db.LogUpdate) Debug.Log($"{ClassName} updated. changed={Changed.Count} {db.CountInfo}");
+				if (db.LogChangedFiles) foreach (string path in Changed) Debug.Log(path);
+				Changed.Clear();
+				EditorUtility.SetDirty(db);
 			}
 		}
 	}
