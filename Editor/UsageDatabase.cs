@@ -258,9 +258,9 @@
 					db.RemoveRefer(id);
 					db.AddRefer(path, id);
 				}
-				if (Changed.Count > 0)
-					Saving.Disposable = Observable.Timer(TimeSpan.FromSeconds(db.SaveDelay))
-						.Retry().Subscribe(_ => Save());
+				if (Changed.Count <= 0) return;
+				try { Saving.Disposable = Observable.Timer(TimeSpan.FromSeconds(db.SaveDelay)).Subscribe(_ => Save()); }
+				catch (InvalidOperationException) { } // MainThreadDispatcher.Awake.DontDestroyOnLoad
 			}
 
 			static void Save()
