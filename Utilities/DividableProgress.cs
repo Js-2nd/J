@@ -1,6 +1,5 @@
 ﻿namespace J
 {
-	using J.Internal;
 	using System;
 	using UniRx;
 
@@ -52,19 +51,6 @@
 				dividableProgress.Subscribe(progress.Report);
 			}
 			return dividableProgress;
-		}
-
-		public static IObservable<T> ProgressHint<T>(this IObservable<T> source,
-			IProgress<float> progress, int frameHint = 30, float progressHint = 0.9f)
-		{
-			if (progress == null) return source;
-			double step = Math.Pow(1 - progressHint, 1d / frameHint);
-			return Observable.Defer(() =>
-			{
-				double rest = 1;
-				var update = Observable.EveryUpdate().Subscribe(_ => progress.Report(1 - (float)(rest *= step)));
-				return source.Finally(update.Dispose).ReportOnCompleted(progress);
-			});
 		}
 	}
 }
