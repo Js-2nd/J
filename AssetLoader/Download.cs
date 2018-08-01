@@ -9,10 +9,10 @@
 	partial class AssetLoaderInstance
 	{
 		public IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
-			bool includeDependencies = true, TimeSpan? yieldInterval = null)
+			bool includeDependencies = true, float? yieldInterval = null)
 		{
 			return WhenManifestLoaded().ContinueWith(_ => Observable.FromMicroCoroutine<BatchDownloader>(observer =>
-				DownloadCoroutine(observer, bundleNames, includeDependencies, (float?)yieldInterval?.TotalSeconds)));
+				DownloadCoroutine(observer, bundleNames, includeDependencies, yieldInterval)));
 		}
 
 		IEnumerator DownloadCoroutine(IObserver<BatchDownloader> observer, IEnumerable<string> bundleNames,
@@ -57,7 +57,7 @@
 	partial class AssetLoader
 	{
 		public static IObservable<BatchDownloader> Download(IEnumerable<string> bundleNames,
-			bool includeDependencies = true, TimeSpan? yieldInterval = null) =>
+			bool includeDependencies = true, float? yieldInterval = null) =>
 			Instance.Download(bundleNames, includeDependencies, yieldInterval);
 	}
 }
