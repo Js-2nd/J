@@ -124,6 +124,12 @@
 		{
 			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs), "reference", "references");
 		}
+		[MenuItem(MenuRoot + "Find References (Window)")]
+		static void FindReferWindow()
+		{
+			var db = Init(true);
+			if (db) UsageWindow.Show(Searcher.BreadthFirst(Selection.assetGUIDs, db.GetReferIds));
+		}
 
 		[MenuItem(MenuRoot + "Find Dependencies")]
 		static void FindDepend()
@@ -134,6 +140,12 @@
 		static void FindDependRecursive()
 		{
 			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs), "dependency", "dependencies");
+		}
+		[MenuItem(MenuRoot + "Find Dependencies (Window)")]
+		static void FindDependWindow()
+		{
+			var db = Init(true);
+			if (db) UsageWindow.Show(Searcher.BreadthFirst(Selection.assetGUIDs, db.GetDependIds));
 		}
 
 		static void LogAssets(IEnumerable<string> ids, string singular = null, string plural = null)
