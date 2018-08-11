@@ -51,17 +51,16 @@
 	public class UsageTree : TreeView
 	{
 		readonly TreeViewItem root;
-		readonly TreeViewItem[] items;
+		readonly UsageTreeItem[] items;
 
 		public UsageTree(TreeViewState state, IReadOnlyList<UsageTreeEntry> entries) : base(state)
 		{
 			root = new TreeViewItem(-1, -1);
-			items = new TreeViewItem[entries.Count];
+			items = new UsageTreeItem[entries.Count];
 			for (var i = 0; i < entries.Count; i++)
 			{
 				var entry = entries[i];
-				var path = AssetDatabase.GUIDToAssetPath(entry.AssetId);
-				var item = items[i] = new TreeViewItem(i, entry.Depth, path);
+				var item = items[i] = new UsageTreeItem(i, entry.Depth, entry.AssetId);
 				if (entry.Parent < 0) root.AddChild(item);
 				else items[entry.Parent].AddChild(item);
 			}
@@ -69,15 +68,26 @@
 			ExpandAll();
 		}
 
-		protected override TreeViewItem BuildRoot()
-		{
-			return root;
-		}
+		protected override TreeViewItem BuildRoot() => root;
 
 		protected override void SingleClickedItem(int id)
 		{
 			var item = items.ElementAtOrDefault(id);
-			if (item != null) Selection.activeObject = AssetDatabase.LoadMainAssetAtPath(item.displayName);
+			if (item?.Path != null) Selection.activeObject = AssetDatabase.LoadMainAssetAtPath(item.Path);
+		}
+	}
+
+	sealed class UsageTreeItem : TreeViewItem
+	{
+		public readonly string Path;
+		public readonly string Type;
+
+		public UsageTreeItem(int id, int depth, string assetId) : base(id, depth)
+		{
+			Path = AssetDatabase.GUIDToAssetPath(assetId);
+			if (string.IsNullOrEmpty(Path)) Path = null;
+			else Type = AssetDatabase.GetMainAssetTypeAtPath(Path)?.Name;
+			displayName = $"[{Type}] {Path ?? assetId}";
 		}
 	}
 }
