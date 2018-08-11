@@ -16,6 +16,7 @@
 
 		[SerializeField] TreeViewState state;
 		[SerializeField] List<UsageTreeEntry> entries;
+		[SerializeField] float rowHeight;
 		UsageTree tree;
 
 		void Init(IEnumerable<SearchNode<string>> search)
@@ -34,8 +35,13 @@
 		{
 			if (state == null) state = new TreeViewState();
 			if (entries == null) entries = new List<UsageTreeEntry>();
-			if (tree == null) tree = new UsageTree(state, entries);
+			if (tree == null) tree = new UsageTree(state, entries, rowHeight);
+			EditorGUILayout.BeginHorizontal();
 			tree.searchString = EditorGUILayout.TextField(tree.searchString);
+			EditorGUI.BeginChangeCheck();
+			rowHeight = GUILayout.HorizontalSlider(rowHeight, 16, 80, GUILayout.Width(64));
+			if (EditorGUI.EndChangeCheck()) tree.SetRowHeight(rowHeight);
+			EditorGUILayout.EndHorizontal();
 			tree.OnGUI(new Rect(0, 20, position.width, position.height));
 		}
 	}
@@ -53,7 +59,7 @@
 		readonly TreeViewItem root;
 		readonly UsageTreeItem[] items;
 
-		public UsageTree(TreeViewState state, IReadOnlyList<UsageTreeEntry> entries) : base(state)
+		public UsageTree(TreeViewState state, IReadOnlyList<UsageTreeEntry> entries, float rowHeight) : base(state)
 		{
 			root = new TreeViewItem(-1, -1);
 			items = new UsageTreeItem[entries.Count];
@@ -64,16 +70,61 @@
 				if (entry.Parent < 0) root.AddChild(item);
 				else items[entry.Parent].AddChild(item);
 			}
+			SetRowHeight(rowHeight);
 			Reload();
 			ExpandAll();
 		}
 
+		float padding;
+		public void SetRowHeight(float height)
+		{
+			rowHeight = height;
+			extraSpaceBeforeIconAndLabel = rowHeight + 4;
+			padding = (rowHeight - 16) / 2;
+		}
+
 		protected override TreeViewItem BuildRoot() => root;
+
+		protected override void RowGUI(RowGUIArgs args)
+		{
+			DrawIcon(args);
+			args.rowRect.yMin += padding;
+			args.rowRect.yMax -= padding;
+			base.RowGUI(args);
+		}
+
+		void DrawIcon(RowGUIArgs args)
+		{
+			var item = (UsageTreeItem)args.item;
+			if (item?.Path == null) return;
+			var icon = AssetDatabase.GetCachedIcon(item.Path);
+			if (icon == null) return;
+			var rect = args.rowRect;
+			rect.xMin += GetContentIndent(item);
+			rect.width = rect.height;
+			GUI.DrawTexture(rect, icon, ScaleMode.ScaleToFit);
+		}
 
 		protected override void SingleClickedItem(int id)
 		{
 			var item = items.ElementAtOrDefault(id);
-			if (item?.Path != null) Selection.activeObject = AssetDatabase.LoadMainAssetAtPath(item.Path);
+			if (item?.Path == null) return;
+			var asset = AssetDatabase.LoadMainAssetAtPath(item.Path);
+			if (asset) Selection.activeObject = asset;
+		}
+
+		static readonly char[] SearchSeparator = { ' ' };
+		string cachedSearch;
+		string[] cachedWords;
+		protected override bool DoesItemMatchSearch(TreeViewItem item, string search)
+		{
+			if (cachedSearch != search)
+			{
+				cachedSearch = search;
+				cachedWords = search.ToLower().Split(SearchSeparator, StringSplitOptions.RemoveEmptyEntries);
+				cachedWords = cachedWords.Distinct().ToArray();
+			}
+			return cachedWords.All(word => base.DoesItemMatchSearch(item, word));
 		}
 	}
 
