@@ -10,7 +10,7 @@
 	{
 		public string Url { get; set; }
 		public string ETag { get; set; }
-		public string LastModified { get; set; }
+		//public string LastModified { get; set; }
 
 		public string SavePath { get; set; }
 		public string TempPath { get; set; }
@@ -23,7 +23,11 @@
 			return Observable.Defer(() =>
 			{
 				if (IsHeadFetched) return ReturnNull.ReportOnCompleted(progress);
-				return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(OnHeadFetched);
+				return UnityWebRequest.Head(Url).SendAsObservable(progress/*, ETag, LastModified*/).Do(request =>
+				{
+					OnHeadFetched(request);
+					if (!IsDownloaded && request.GetETag() == ETag) OnDownloaded(request);
+				});
 			});
 		}
 

@@ -14,8 +14,8 @@ namespace J
 	{
 		public string Url { get; set; }
 		public Hash128 Hash { get; set; }
-		public string ETag { get; set; }
-		public string LastModified { get; set; }
+		//public string ETag { get; set; }
+		//public string LastModified { get; set; }
 
 		public override IObservable<UnityWebRequest> FetchHead(IProgress<float> progress = null)
 		{
@@ -30,7 +30,7 @@ namespace J
 						catch (Exception ex) { return Observable.Throw<UnityWebRequest>(ex); }
 						return ReturnNull.ReportOnCompleted(progress);
 					}
-					return UnityWebRequest.Head(Url).SendAsObservable(progress, ETag, LastModified).Do(OnHeadFetched);
+					return UnityWebRequest.Head(Url).SendAsObservable(progress/*, ETag, LastModified*/).Do(OnHeadFetched);
 				});
 			});
 		}
