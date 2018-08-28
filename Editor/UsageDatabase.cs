@@ -11,7 +11,7 @@
 	using Dict = System.Collections.Generic.Dictionary<string, System.Collections.Generic.HashSet<string>>;
 
 	[PreferBinarySerialization]
-	public partial class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
+	public sealed class UsageDatabase : ScriptableObject, ISerializationCallbackReceiver
 	{
 		public bool LogUpdate;
 		public bool LogChangedFiles;
@@ -20,6 +20,8 @@
 		[SerializeField, HideInInspector] List<Item> Data = new List<Item>();
 		readonly Dict ReferDict = new Dict();
 		readonly Dict DependDict = new Dict();
+
+		string CountInfo => $"dep={DependDict.Count} ref={ReferDict.Count}";
 
 		void ISerializationCallbackReceiver.OnBeforeSerialize()
 		{
@@ -70,20 +72,9 @@
 		}
 
 		public IReadOnlyCollection<string> GetReferIds(string id) => ReferDict.GetOrDefault(id) ?? Empty;
-		public IEnumerable<string> GetReferIds(IEnumerable<string> ids, int maxDepth = -1,
-			SearchYieldType yieldType = SearchYieldType.ExcludeSourceAtFirst) =>
-			Search.BreadthFirst(ids, GetReferIds, maxDepth, yieldType);
 
 		public IReadOnlyCollection<string> GetDependIds(string id) => DependDict.GetOrDefault(id) ?? Empty;
-		public IEnumerable<string> GetDependIds(IEnumerable<string> ids, int maxDepth = -1,
-			SearchYieldType yieldType = SearchYieldType.ExcludeSourceAtFirst) =>
-			Search.BreadthFirst(ids, GetDependIds, maxDepth, yieldType);
 
-		string CountInfo => $"dep={DependDict.Count} ref={ReferDict.Count}";
-	}
-
-	partial class UsageDatabase
-	{
 		const string ClassName = nameof(UsageDatabase);
 		const string MenuRoot = "Assets/" + ClassName + "/";
 
@@ -115,72 +106,23 @@
 		}
 
 		[MenuItem(MenuRoot + "Find References")]
-		static void FindRefer()
-		{
-			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs, 1), "reference", "references");
-		}
-		[MenuItem(MenuRoot + "Find References (Recursive)")]
-		static void FindReferRecursive()
-		{
-			if (Init(true)) LogAssets(Instance.GetReferIds(Selection.assetGUIDs), "reference", "references");
-		}
-		[MenuItem(MenuRoot + "Find References (Window)")]
-		static void FindReferWindow()
+		public static void FindReferWindow() => FindReferWindow(Selection.assetGUIDs);
+		public static void FindReferWindow(IEnumerable<string> assetGUIDs)
 		{
 			var db = Init(true);
-			if (db) UsageWindow.Show(Searcher.BreadthFirst(Selection.assetGUIDs, db.GetReferIds));
+			if (db) UsageWindow.Show(Searcher.BreadthFirst(assetGUIDs, db.GetReferIds));
 		}
 
 		[MenuItem(MenuRoot + "Find Dependencies")]
-		static void FindDepend()
-		{
-			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs, 1), "dependency", "dependencies");
-		}
-		[MenuItem(MenuRoot + "Find Dependencies (Recursive)")]
-		static void FindDependRecursive()
-		{
-			if (Init(true)) LogAssets(Instance.GetDependIds(Selection.assetGUIDs), "dependency", "dependencies");
-		}
-		[MenuItem(MenuRoot + "Find Dependencies (Window)")]
-		static void FindDependWindow()
+		public static void FindDependencies() => FindDependencies(Selection.assetGUIDs);
+		public static void FindDependencies(IEnumerable<string> assetGUIDs)
 		{
 			var db = Init(true);
-			if (db) UsageWindow.Show(Searcher.BreadthFirst(Selection.assetGUIDs, db.GetDependIds));
-		}
-
-		static void LogAssets(IEnumerable<string> ids, string singular = null, string plural = null)
-		{
-			int count = 0;
-			int deleted = 0;
-			foreach (string id in ids)
-				if (LogAsset(id)) count++;
-				else deleted++;
-			if (singular == null) return;
-			if (plural == null) plural = singular;
-			string suffix = deleted == 0 ? "." : $", {deleted} deleted.";
-			switch (count)
-			{
-				case 0: Debug.Log($"No {plural} found{suffix}"); break;
-				case 1: Debug.Log($"1 {singular} found{suffix}"); break;
-				default: Debug.Log($"{count} {plural} found{suffix}"); break;
-			}
-		}
-
-		static bool LogAsset(string id)
-		{
-			string path = AssetDatabase.GUIDToAssetPath(id);
-			var asset = AssetDatabase.LoadMainAssetAtPath(path);
-			if (asset == null)
-			{
-				Debug.LogWarning("[DELETED] " + path);
-				return false;
-			}
-			Debug.Log($"[{asset.GetType().Name}] {path}", asset);
-			return true;
+			if (db) UsageWindow.Show(Searcher.BreadthFirst(assetGUIDs, db.GetDependIds));
 		}
 
 		[MenuItem(MenuRoot + "Refresh")]
-		static void Create()
+		public static void Create()
 		{
 			var db = Init();
 			Instance = CreateInstance<UsageDatabase>();
