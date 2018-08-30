@@ -21,12 +21,13 @@
 			var yieldTime = Time.realtimeSinceStartup + yieldInterval;
 			var set = new HashSet<string>();
 			var downloader = new BatchDownloader();
-			Action<string> add = actualName =>
+			Func<string, bool> add = actualName =>
 			{
-				if (!set.Add(actualName)) return;
+				if (!set.Add(actualName)) return false;
 				var hash = Manifest.GetAssetBundleHash(actualName);
-				if (Caching.IsVersionCached(actualName, hash)) return;
-				downloader.Add(new AssetBundleDownloader { Url = RootUrl + actualName, Hash = hash });
+				if (!Caching.IsVersionCached(actualName, hash))
+					downloader.Add(new AssetBundleDownloader { Url = RootUrl + actualName, Hash = hash });
+				return true;
 			};
 			foreach (string bundleName in bundleNames)
 			{
@@ -34,8 +35,7 @@
 				if (ManifestContains(normBundleName))
 				{
 					string actualName = NormToActualName(normBundleName);
-					add(actualName);
-					if (includeDependencies)
+					if (add(actualName) && includeDependencies)
 					{
 						var dependencies = Manifest.GetAllDependencies(actualName);
 						for (int i = 0, iCount = dependencies.Length; i < iCount; i++)
